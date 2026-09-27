@@ -205,7 +205,7 @@ namespace PublicAddress.Revit
                 if (doc.GetElement(sg.ElementId) is not Wall w || sg.GetCurve() is not Line ln) continue;
                 XYZ a = ln.GetEndPoint(0), b = ln.GetEndPoint(1);
                 var dir = (b - a).Normalize();
-                int k = runs.FindIndex(r => r.wall.Id == w.Id &&
+                int k = runs.FindIndex(r => r.wall.Id.Equals(w.Id) &&
                     Math.Abs((r.b - r.a).Normalize().DotProduct(dir)) > 0.999 &&
                     Math.Abs(((a - r.a).CrossProduct(r.b - r.a)).Z) / r.len < 0.05);
                 if (k < 0) { runs.Add((w, a, b, ln.Length)); continue; }
@@ -226,11 +226,11 @@ namespace PublicAddress.Revit
             if (rows >= 2)
             {
                 var u = (first.b - first.a).Normalize();
-                var opposite = runs.Where(r => r.wall.Id != first.wall.Id || r.a.DistanceTo(first.a) > 0.1)
+                var opposite = runs.Where(r => !r.wall.Id.Equals(first.wall.Id) || r.a.DistanceTo(first.a) > 0.1)
                     .Where(r => Math.Abs((r.b - r.a).Normalize().DotProduct(u)) > 0.95)
                     .Select(r => (r, d: Math.Abs(((r.a - first.a).CrossProduct(u)).Z)))
                     .Where(x => x.d > 1.0)
-                    .OrderByDescending(x => x.r.len * 0 + x.d).ThenByDescending(x => x.r.len)
+                    .OrderByDescending(x => x.d).ThenByDescending(x => x.r.len)
                     .Select(x => x.r).FirstOrDefault();
                 if (opposite.wall != null) chosen.Add(opposite);
             }
