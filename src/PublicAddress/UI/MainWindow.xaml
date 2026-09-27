@@ -140,10 +140,11 @@
                                 <TextBox x:Name="CeilNoise" Grid.Column="1" Text="50"/>
                                 <TextBlock Style="{StaticResource Lbl}" Grid.Row="1" Text="Margin di atas noise (dB)"/>
                                 <TextBox x:Name="CeilMargin" Grid.Row="1" Grid.Column="1" Text="10"/>
-                                <StackPanel Grid.Row="2" Grid.ColumnSpan="2" Orientation="Horizontal" Margin="0,4,0,0">
-                                    <TextBlock Style="{StaticResource Lbl}" Text="Plafon (m)"/>
+                                <TextBlock Style="{StaticResource Lbl}" Grid.Row="2" Text="Tinggi plafon (m)" FontWeight="SemiBold"/>
+                                <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal">
                                     <TextBox x:Name="CeilBulkH" Text="3.0" Width="50"/>
-                                    <Button Style="{StaticResource Secondary}" Content="Set ke baris tercentang" Padding="8,2" Click="CeilBulkHeight_Click"/>
+                                    <Button Style="{StaticResource Secondary}" Content="Terapkan" Padding="8,2"
+                                            ToolTip="Isi tinggi plafon &amp; noise ke semua baris yang dicentang" Click="CeilBulkHeight_Click"/>
                                 </StackPanel>
                             </Grid>
                         </GroupBox>
@@ -208,7 +209,7 @@
             <TabItem Header="  Horn Speaker  " FontWeight="SemiBold">
                 <Grid TextElement.FontWeight="Normal">
                     <Grid.ColumnDefinitions><ColumnDefinition Width="400"/><ColumnDefinition/></Grid.ColumnDefinitions>
-                    <StackPanel>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel>
                         <GroupBox Header="Speaker">
                             <Grid>
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition/></Grid.ColumnDefinitions>
@@ -241,11 +242,25 @@
                                           Content="Gambar radius dB di Floor Plan aktif"/>
                             </Grid>
                         </GroupBox>
+                        <GroupBox Header="Rekomendasi dari Space" Margin="0,10,10,0">
+                            <StackPanel>
+                                <StackPanel Orientation="Horizontal">
+                                    <ComboBox x:Name="HornSpace" MinWidth="200" DisplayMemberPath="Label"/>
+                                    <Button Style="{StaticResource Secondary}" Content="Klik di Model" Padding="8,2" Click="HornPickSpace_Click"/>
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                    <Button Style="{StaticResource Secondary}" Margin="0" Content="Hitung Rekomendasi" Click="HornRecommend_Click"/>
+                                    <Button Style="{StaticResource Secondary}" Content="Pakai" x:Name="HornApply" IsEnabled="False" Click="HornApply_Click"
+                                            ToolTip="Isi tap &amp; jumlah per dinding dari rekomendasi"/>
+                                </StackPanel>
+                                <TextBlock x:Name="HornRecText" TextWrapping="Wrap" Margin="0,6,0,0" Foreground="#37474F"/>
+                            </StackPanel>
+                        </GroupBox>
                         <Button Style="{StaticResource Primary}" Margin="0,14,10,0" HorizontalAlignment="Stretch"
                                 Content="Pilih Face Dinding &amp; Tempatkan Horn" Click="HornPlace_Click"/>
                         <TextBlock Margin="0,6,10,0" TextWrapping="Wrap" Foreground="#78909C"
                                    Text="Klik sisi dinding yang menghadap area (bisa beberapa), lalu tekan Finish di Options Bar. Horn dibagi rata sepanjang dinding."/>
-                    </StackPanel>
+                    </StackPanel></ScrollViewer>
 
                     <DockPanel Grid.Column="1">
                         <TextBlock DockPanel.Dock="Top" Text="Radius SPL (on-axis, free field)" FontWeight="SemiBold" Foreground="#1565C0" Margin="0,0,0,6"/>

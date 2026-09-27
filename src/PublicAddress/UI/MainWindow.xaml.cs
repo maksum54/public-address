@@ -103,7 +103,7 @@ namespace PublicAddress.UI
 
             double noise = Num(CeilNoise.Text, 50);
             foreach (var sp in RevitData.GetSpaces(doc))
-                _allRows.Add(new CeilingRow { Space = sp, CeilingH = sp.HeightM, Noise = noise });
+                _allRows.Add(new CeilingRow { Space = sp, CeilingH = Num(CeilBulkH.Text, 3), Noise = noise });
             var levels = new List<string> { "(Semua level)" };
             levels.AddRange(_allRows.Select(r => r.Level).Distinct());
             CeilLevel.ItemsSource = levels;
@@ -115,6 +115,7 @@ namespace PublicAddress.UI
             HornSpeaker.SelectedItem = horns.FirstOrDefault(h => h.Model.Contains("615")) ?? horns.FirstOrDefault();
             HornFamily.ItemsSource = RevitData.GetCommTypes(doc, faceBased: true);
             HornFamily.SelectedIndex = 0;
+            HornSpace.ItemsSource = _allRows.Select(r => r.Space).ToList();
 
             _ready = true;
             UpdateSpecText();
@@ -314,6 +315,40 @@ namespace PublicAddress.UI
 
             Status(res.Message);
             RecapRefresh();
+        }
+
+        HornRecommendation _rec;
+
+        void HornPickSpace_Click(object sender, RoutedEventArgs e)
+        {
+            Hide();
+            Autodesk.Revit.DB.ElementId id;
+            try { id = Placement.PickSpace(_uiapp.ActiveUIDocument); }
+            finally { Show(); Activate(); }
+            if (id == null) return;
+            var sp = (HornSpace.ItemsSource as IEnumerable<SpaceInfo>)?.FirstOrDefault(s => s.Id.Equals(id));
+            if (sp == null) { Status("Space tidak punya boundary yang valid."); return; }
+            HornSpace.SelectedItem = sp;
+            HornRecommend_Click(sender, e);
+        }
+
+        void HornRecommend_Click(object sender, RoutedEventArgs e)
+        {
+            if (HornSpace.SelectedItem is not SpaceInfo sp) { Status("Pilih Space dulu (dari daftar atau Klik di Model)."); return; }
+            if (HornSpeaker.SelectedItem is not SpeakerSpec h) return;
+            double target = DbLevels().FirstOrDefault(99);
+            _rec = HornAdvisor.Recommend(h, sp.Boundary, Num(HornMount.Text, 4), Num(HornEar.Text, 1.5), target);
+            HornRecText.Text = _rec.Text;
+            HornRecText.Foreground = _rec.Ok ? System.Windows.Media.Brushes.DarkGreen : System.Windows.Media.Brushes.Firebrick;
+            HornApply.IsEnabled = true;
+        }
+
+        void HornApply_Click(object sender, RoutedEventArgs e)
+        {
+            if (_rec == null) return;
+            HornTap.SelectedItem = _rec.TapW;
+            HornCount.Text = _rec.PerWall.ToString();
+            Status($"Tap {F(_rec.TapW)} W dan {_rec.PerWall} horn/dinding dipakai. Klik tombol biru, lalu pilih {_rec.Rows} face dinding panjang.");
         }
 
         // ---------------- REKAP ----------------

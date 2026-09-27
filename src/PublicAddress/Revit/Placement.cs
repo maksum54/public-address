@@ -40,8 +40,25 @@ namespace PublicAddress.Revit
         public bool AllowReference(Reference r, XYZ p) => true;
     }
 
+    class SpaceFilter : ISelectionFilter
+    {
+        public bool AllowElement(Element e) => e is Autodesk.Revit.DB.Mechanical.Space;
+        public bool AllowReference(Reference r, XYZ p) => false;
+    }
+
     public static class Placement
     {
+        /// <summary>User mengklik satu Space di view. Null bila batal.</summary>
+        public static ElementId PickSpace(UIDocument uidoc)
+        {
+            try
+            {
+                return uidoc.Selection.PickObject(ObjectType.Element, new SpaceFilter(),
+                    "Klik Space yang akan diberi horn speaker").ElementId;
+            }
+            catch (Autodesk.Revit.Exceptions.OperationCanceledException) { return null; }
+        }
+
         static void Activate(FamilySymbol s)
         {
             if (!s.IsActive) { s.Activate(); s.Document.Regenerate(); }

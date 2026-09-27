@@ -16,6 +16,7 @@ namespace PublicAddress.Revit
         public ElementId LevelId;
         public double AreaM2, HeightM;
         public List<P2> Boundary = new();
+        public string Label => $"{LevelName} · {Number} {Name}";
     }
 
     public class FamilyTypeItem

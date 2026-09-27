@@ -28,8 +28,20 @@ SC-650 tidak dimasukkan karena tidak punya trafo 100 V.
 
 Setiap speaker yang ditempatkan diberi Comments `PA|model|tapW|info`; tab Rekap membaca dari situ.
 
+## Rekomendasi horn dari Space
+Di tab Horn, pilih Space (daftar atau **Klik di Model**) lalu **Hitung Rekomendasi**:
+- dimensi ruang L × W dari boundary Space (persegi panjang terkecil yang membungkus);
+- 1 baris di dinding panjang bila SPL target (dB pertama, mis. 99) tercapai sampai dinding seberang,
+  selain itu 2 baris berhadapan (throw = W/2);
+- jumlah per dinding = ceil(L / (2·throw·tan(H/2))), tap = tap terkecil yang memenuhi target di jarak miring.
+Tombol **Pakai** mengisi tap & jumlah per dinding, lalu tempatkan dengan memilih face dinding.
+
+## Tinggi plafon
+Tinggi plafon diambil dari input user (**Tinggi plafon (m)**, default 3.0), bukan dari tinggi Space.
+Tombol **Terapkan** mengisi ke semua baris tercentang; tetap bisa diedit per baris.
+
 ## Build & install
-1. Build `src/PublicAddress/PublicAddress.csproj` (Visual Studio 2022 / .NET 8 SDK, Windows).
-2. Salin isi `bin/Release/net8.0-windows/` ke `%AppData%\Autodesk\Revit\Addins\2025\PublicAddress\`
-   (termasuk folder `Resources`).
-3. Salin `PublicAddress.addin` ke `%AppData%\Autodesk\Revit\Addins\2025\`.
+DLL dibangun otomatis oleh GitHub Actions (`.github/workflows/build.yml`) setiap push.
+Unduh artifact **PublicAddress-Revit2025** dari tab *Actions*, lalu:
+1. Salin folder `PublicAddress` ke `%AppData%\Autodesk\Revit\Addins\2025\`.
+2. Salin `PublicAddress.addin` ke `%AppData%\Autodesk\Revit\Addins\2025\`.
