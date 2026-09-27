@@ -119,10 +119,10 @@
                                 <TextBlock Style="{StaticResource Lbl}" Text="Metode spacing"/>
                                 <ComboBox x:Name="CeilMethod" Grid.Column="1" SelectionChanged="CeilInputChanged">
                                     <ComboBoxItem Content="Luas ÷ coverage area (standar)" Tag="CoverageArea"/>
-                                    <ComboBoxItem Content="Grid edge to center (terbaik)" Tag="EdgeToCenter"/>
-                                    <ComboBoxItem Content="Min. overlap - grid kotak" Tag="MinOverlapSquare"/>
-                                    <ComboBoxItem Content="Min. overlap - grid hex" Tag="MinOverlapHex"/>
-                                    <ComboBoxItem Content="No overlap (hemat)" Tag="NoOverlap"/>
+                                    <ComboBoxItem Content="Edge to Center (Biamp) - rapat" Tag="EdgeToCenter"/>
+                                    <ComboBoxItem Content="Partial Overlap (Biamp) - kotak" Tag="MinOverlapSquare"/>
+                                    <ComboBoxItem Content="Partial Overlap (Biamp) - hex" Tag="MinOverlapHex"/>
+                                    <ComboBoxItem Content="Edge to Edge (Biamp) - paling sedikit" Tag="NoOverlap"/>
                                 </ComboBox>
                                 <TextBlock Style="{StaticResource Lbl}" Grid.Row="1" Text="Tinggi telinga (m)"/>
                                 <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal">
