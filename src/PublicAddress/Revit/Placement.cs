@@ -31,6 +31,8 @@ namespace PublicAddress.Revit
     public class HornResult
     {
         public int Placed, Walls, Skipped;
+        public List<ElementId> Created = new();
+        public double MountZ;
         public string Message;
     }
 
@@ -166,6 +168,7 @@ namespace PublicAddress.Revit
                     var info = reaches.Count > 0 ? $"{reaches[0].db:0}dB@{reaches[0].reach:0.0}m" : "";
                     RevitData.SetComments(fi, new PaTag { Model = spk.Model, TapW = hs.TapW, Info = info }.Encode());
                     res.Placed++;
+                    res.Created.Add(fi.Id);
 
                     if (canDraw) DrawRadius(doc, (ViewPlan)view, loc, normal, along, halfH, reaches);
                 }
@@ -245,6 +248,7 @@ namespace PublicAddress.Revit
             bool canDraw = hs.DrawRadius && view is ViewPlan;
             var lvl = doc.GetElement(space.LevelId) as Level;
             double z = (lvl?.Elevation ?? 0) + U.ToFt(hs.MountHeightM);
+            res.MountZ = z;
 
             using var t = new Transaction(doc, "PA - Horn otomatis di Space");
             t.Start();
@@ -284,6 +288,7 @@ namespace PublicAddress.Revit
                     var info = reaches.Count > 0 ? $"{space.Number} {reaches[0].db:0}dB@{reaches[0].reach:0.0}m" : space.Number;
                     RevitData.SetComments(fi, new PaTag { Model = spk.Model, TapW = hs.TapW, Info = info }.Encode());
                     res.Placed++;
+                    res.Created.Add(fi.Id);
                     if (canDraw) DrawRadius(doc, (ViewPlan)view, loc, normal, along, halfH, reaches);
                 }
             }

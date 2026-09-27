@@ -517,6 +517,13 @@ namespace PublicAddress.UI
             catch (Exception ex) { res = new HornResult { Message = "Gagal: " + ex.Message }; }
             Status(res.Message);
             if (res.Placed == 0) MessageBox.Show(this, res.Message, "Horn tidak ditempatkan");
+            else
+            {
+                // pilih & tampilkan horn yang baru dibuat supaya terlihat walau di atas cut plane
+                var uidoc = _uiapp.ActiveUIDocument;
+                uidoc.Selection.SetElementIds(res.Created);
+                Status(res.Message + $" Horn dipilih (Selection) — tinggi pasang {Num(HornMount.Text, 4):0.0} m; bila tidak tampak di denah, cek View Range / view 3D.");
+            }
             RecapRefresh();
             return res.Placed;
         }
