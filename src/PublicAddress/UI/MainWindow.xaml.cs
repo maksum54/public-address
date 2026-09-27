@@ -484,6 +484,34 @@ namespace PublicAddress.UI
 
         int _lastHornPlaced;
 
+        int PerWallNow()
+        {
+            int n = (int)Num(HornCount.Text, 0);
+            return n > 0 ? n : _rec?.PerWall ?? 1;
+        }
+
+        /// <summary>Tempatkan horn langsung di dinding Space tanpa klik dinding.</summary>
+        int PlaceHornsAuto(SpaceInfo sp)
+        {
+            if (HornFamily.SelectedItem is not FamilyTypeItem fam || _rec == null) return 0;
+            var hs = new HornSettings
+            {
+                Speaker = (SpeakerSpec)HornSpeaker.SelectedItem,
+                TapW = (double)HornTap.SelectedItem,
+                MountHeightM = Num(HornMount.Text, 4),
+                EarHeightM = Num(HornEar.Text, 1.5),
+                DbLevels = DbLevels(),
+                DrawRadius = HornDraw.IsChecked == true,
+            };
+            HornResult res;
+            try { res = Placement.PlaceHornsInSpace(_uiapp.ActiveUIDocument.Document, fam.Symbol, hs, sp.Id, _rec.Rows, PerWallNow()); }
+            catch (Exception ex) { res = new HornResult { Message = "Gagal: " + ex.Message }; }
+            Status(res.Message);
+            if (res.Placed == 0) MessageBox.Show(this, res.Message, "Horn tidak ditempatkan");
+            RecapRefresh();
+            return res.Placed;
+        }
+
         /// <summary>Seperti ceiling: klik Space → preview rekomendasi → pilih face dinding → Space berikutnya.</summary>
         void HornPickLoop_Click(object sender, RoutedEventArgs e)
         {
@@ -510,15 +538,13 @@ namespace PublicAddress.UI
 
                 var ans = MessageBox.Show(this,
                     $"Space {sp.Number} {sp.Name}\n\n{_rec.Text}\n\n" +
-                    $"Ya = pilih {_rec.Rows} face dinding panjang lalu tempatkan ({_rec.PerWall} horn/dinding)\nTidak = lewati Space ini\nCancel = selesai",
+                    $"Ya = tempatkan otomatis di {_rec.Rows} dinding panjang ({PerWallNow()} horn/dinding)\nTidak = lewati Space ini\nCancel = selesai",
                     "Preview Horn", MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
                 if (ans == MessageBoxResult.Cancel) break;
                 if (ans != MessageBoxResult.Yes) continue;
 
                 HornApply_Click(sender, e);
-                _lastHornPlaced = 0;
-                HornPlace_Click(sender, e);
-                total += _lastHornPlaced;
+                total += PlaceHornsAuto(sp);
             }
             Status($"Selesai. {total} horn ditempatkan pada sesi klik ini.");
         }
