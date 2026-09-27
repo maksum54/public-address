@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RevitAddIns>
+  <AddIn Type="Application">
+    <Name>Public Address Calculation</Name>
+    <Assembly>PublicAddress\PublicAddress.dll</Assembly>
+    <FullClassName>PublicAddress.App</FullClassName>
+    <ClientId>6F3C2A51-8E0B-4D7A-9C21-5B4E7A1D0F93</ClientId>
+    <VendorId>PADD</VendorId>
+    <VendorDescription>Public Address Calculation</VendorDescription>
+  </AddIn>
+</RevitAddIns>

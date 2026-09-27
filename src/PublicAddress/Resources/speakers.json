@@ -1,0 +1,55 @@
+{
+  "_readme": "Database speaker. Tambah speaker baru dengan menyalin salah satu blok. Kind: Ceiling atau Horn. SpacingAngleDeg = sudut yang dipakai pabrikan untuk tabel coverage & spacing (ceiling). TapsW = tap trafo untuk line 100 V.",
+  "Speakers": [
+    {
+      "Model": "PC-671R/RV",
+      "Kind": "Ceiling",
+      "CoverageHDeg": 65,
+      "CoverageVDeg": 65,
+      "SpacingAngleDeg": 65,
+      "SensitivityDb": 96,
+      "MaxPowerW": 6,
+      "TapsW": [0.5, 1, 2, 3, 6]
+    },
+    {
+      "Model": "F-101C/M",
+      "Kind": "Ceiling",
+      "CoverageHDeg": 120,
+      "CoverageVDeg": 120,
+      "SpacingAngleDeg": 90,
+      "SensitivityDb": 90,
+      "MaxPowerW": 20,
+      "TapsW": [1, 3, 5, 10, 20]
+    },
+    {
+      "Model": "SC-610/T",
+      "Kind": "Horn",
+      "CoverageHDeg": 70,
+      "CoverageVDeg": 100,
+      "SpacingAngleDeg": 70,
+      "SensitivityDb": 110,
+      "MaxPowerW": 10,
+      "TapsW": [1, 3, 6]
+    },
+    {
+      "Model": "SC-615/T",
+      "Kind": "Horn",
+      "CoverageHDeg": 70,
+      "CoverageVDeg": 90,
+      "SpacingAngleDeg": 70,
+      "SensitivityDb": 112,
+      "MaxPowerW": 15,
+      "TapsW": [5, 10, 15]
+    },
+    {
+      "Model": "SC-630/T",
+      "Kind": "Horn",
+      "CoverageHDeg": 55,
+      "CoverageVDeg": 70,
+      "SpacingAngleDeg": 55,
+      "SensitivityDb": 113,
+      "MaxPowerW": 30,
+      "TapsW": [10, 20, 30]
+    }
+  ]
+}
