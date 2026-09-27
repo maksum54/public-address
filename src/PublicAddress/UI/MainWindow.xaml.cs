@@ -115,6 +115,7 @@ namespace PublicAddress.UI
     public partial class MainWindow : Window
     {
         readonly UIApplication _uiapp;
+        readonly RevitRunner _runner = new RevitRunner();
         readonly SpeakerLibrary _lib;
         readonly ObservableCollection<CeilingRow> _allRows = new();
         bool _ready;
@@ -187,7 +188,9 @@ namespace PublicAddress.UI
                 HornSpec.Text = $"{h.CoverageHDeg}° H × {h.CoverageVDeg}° V · {h.SensitivityDb} dB (1W/1m) · maks {h.MaxPowerW} W";
         }
 
-        void RefreshFamilies_Click(object sender, RoutedEventArgs e)
+        void RefreshFamilies_Click(object sender, RoutedEventArgs e) => _runner.Run(_ => RefreshFamilies_ClickCore(sender, e));
+
+        void RefreshFamilies_ClickCore(object sender, RoutedEventArgs e)
         {
             var doc = _uiapp.ActiveUIDocument.Document;
             CeilFamily.ItemsSource = RevitData.GetCommTypes(doc, faceBased: false);
@@ -266,7 +269,9 @@ namespace PublicAddress.UI
             CeilGrid.Items.Refresh();
         }
 
-        void CeilPlace_Click(object sender, RoutedEventArgs e)
+        void CeilPlace_Click(object sender, RoutedEventArgs e) => _runner.Run(_ => CeilPlace_ClickCore(sender, e));
+
+        void CeilPlace_ClickCore(object sender, RoutedEventArgs e)
         {
             CeilRecalc();
             if (CeilFamily.SelectedItem is not FamilyTypeItem fam)
@@ -302,7 +307,9 @@ namespace PublicAddress.UI
         }
 
         /// <summary>Seperti tool fire alarm: klik satu Space, lihat preview, konfirmasi, lanjut ke Space berikutnya.</summary>
-        void CeilPick_Click(object sender, RoutedEventArgs e)
+        void CeilPick_Click(object sender, RoutedEventArgs e) => _runner.Run(_ => CeilPick_ClickCore(sender, e));
+
+        void CeilPick_ClickCore(object sender, RoutedEventArgs e)
         {
             if (CeilFamily.SelectedItem is not FamilyTypeItem fam)
             {
@@ -453,7 +460,9 @@ namespace PublicAddress.UI
             if (_ready && HornSpace.SelectedItem is SpaceInfo) HornRecommend_Click(null, null);
         }
 
-        void HornPlace_Click(object sender, RoutedEventArgs e)
+        void HornPlace_Click(object sender, RoutedEventArgs e) => _runner.Run(_ => HornPlace_ClickCore(sender, e));
+
+        void HornPlace_ClickCore(object sender, RoutedEventArgs e)
         {
             if (HornFamily.SelectedItem is not FamilyTypeItem fam)
             {
@@ -513,7 +522,9 @@ namespace PublicAddress.UI
         }
 
         /// <summary>Seperti ceiling: klik Space → preview rekomendasi → pilih face dinding → Space berikutnya.</summary>
-        void HornPickLoop_Click(object sender, RoutedEventArgs e)
+        void HornPickLoop_Click(object sender, RoutedEventArgs e) => _runner.Run(_ => HornPickLoop_ClickCore(sender, e));
+
+        void HornPickLoop_ClickCore(object sender, RoutedEventArgs e)
         {
             if (HornFamily.SelectedItem is not FamilyTypeItem)
             {
@@ -608,7 +619,9 @@ namespace PublicAddress.UI
 
         HornRecommendation _rec;
 
-        void HornPickSpace_Click(object sender, RoutedEventArgs e)
+        void HornPickSpace_Click(object sender, RoutedEventArgs e) => _runner.Run(_ => HornPickSpace_ClickCore(sender, e));
+
+        void HornPickSpace_ClickCore(object sender, RoutedEventArgs e)
         {
             Hide();
             Autodesk.Revit.DB.ElementId id;
@@ -662,7 +675,9 @@ namespace PublicAddress.UI
             RecapZone.ItemsSource = _recapZone;
         }
 
-        void RecapRefresh_Click(object sender, RoutedEventArgs e) { RecapRefresh(); Status("Rekap diperbarui dari model."); }
+        void RecapRefresh_Click(object sender, RoutedEventArgs e) => _runner.Run(_ => RecapRefresh_ClickCore(sender, e));
+
+        void RecapRefresh_ClickCore(object sender, RoutedEventArgs e) { RecapRefresh(); Status("Rekap diperbarui dari model."); }
 
         void RecapExport_Click(object sender, RoutedEventArgs e)
         {

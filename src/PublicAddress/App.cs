@@ -42,7 +42,7 @@ namespace PublicAddress
             {
                 var win = new MainWindow(data.Application);
                 new System.Windows.Interop.WindowInteropHelper(win).Owner = data.Application.MainWindowHandle;
-                win.ShowDialog();
+                win.Show();   // modeless: aksi Revit dijalankan lewat ExternalEvent (RevitRunner)
                 return Result.Succeeded;
             }
             catch (Exception ex)
