@@ -19,6 +19,8 @@ namespace PublicAddress.Core
         public double SensitivityDb { get; set; }
         public double MaxPowerW { get; set; }
         public List<double> TapsW { get; set; } = new();
+        /// <summary>Tabel datasheet (feet): h-l, coverage sqft, edge-center, min overlap square, min overlap hex, no overlap, max SPL.</summary>
+        public List<double[]> Table { get; set; }
 
         public override string ToString() => Model;
     }

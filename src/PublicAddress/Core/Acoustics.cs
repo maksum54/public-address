@@ -53,6 +53,16 @@ namespace PublicAddress.Core
             return null;
         }
 
+        public const double Ft = 0.3048, SqFt = 0.09290304;
+
+        /// <summary>Baris tabel datasheet dengan h-l (ft) terdekat. Null bila speaker tanpa tabel.</summary>
+        public static double[] TableRow(SpeakerSpec spk, double hM)
+        {
+            if (spk.Table == null || spk.Table.Count == 0) return null;
+            double hFt = hM / Ft;
+            return spk.Table.OrderBy(r => Math.Abs(r[0] - hFt)).First();
+        }
+
         static readonly double[] AmpSizes = { 60, 120, 240, 360, 480, 600, 900, 1200, 2400 };
 
         public static double AmplifierSize(double totalW, double headroom = 1.25)
@@ -156,6 +166,30 @@ namespace PublicAddress.Core
                     var p = new P2(minX + w * (i + 0.5) / cols, minY + l * (j + 0.5) / ny);
                     if (Inside(poly, p)) res.Add(p);
                 }
+            }
+            if (res.Count == 0) res.AddRange(Layout(poly, Math.Max(w, l) * 2, false));
+            return res;
+        }
+
+        /// <summary>
+        /// Grid sel: kolom = ceil(lebar / s), baris = ceil(panjang / s). Speaker di tengah tiap sel,
+        /// jadi jarak aktual = lebar / kolom dan speaker terluar ke dinding = setengahnya.
+        /// </summary>
+        public static List<P2> LayoutCells(IList<P2> poly, double s, out int nx, out int ny)
+        {
+            var res = new List<P2>();
+            nx = ny = 0;
+            if (poly.Count < 3 || s <= 0) return res;
+            double minX = poly.Min(p => p.X), maxX = poly.Max(p => p.X);
+            double minY = poly.Min(p => p.Y), maxY = poly.Max(p => p.Y);
+            double w = maxX - minX, l = maxY - minY;
+            nx = Math.Max(1, (int)Math.Ceiling(w / s - 1e-6));
+            ny = Math.Max(1, (int)Math.Ceiling(l / s - 1e-6));
+            for (int j = 0; j < ny; j++)
+            for (int i = 0; i < nx; i++)
+            {
+                var p = new P2(minX + w * (i + 0.5) / nx, minY + l * (j + 0.5) / ny);
+                if (Inside(poly, p)) res.Add(p);
             }
             if (res.Count == 0) res.AddRange(Layout(poly, Math.Max(w, l) * 2, false));
             return res;

@@ -41,39 +41,59 @@ namespace PublicAddress.UI
         public string Status { get; private set; } = "-";
         public bool? Ok { get; private set; }
 
-        public void Calc(SpeakerSpec spk, SpacingMethod m, double ear, double margin, bool full)
+        public double TableHFt { get; private set; }
+        public int AreaCount { get; private set; }
+        public string GridSize { get; private set; } = "";
+        public double DxM { get; private set; }
+        public double DyM { get; private set; }
+
+        /// <summary>
+        /// 1. h = plafon - telinga, dibulatkan ke baris tabel datasheet terdekat (ft).
+        /// 2. spacing dari tabel: No Overlap atau Min. Overlap (square).
+        /// 3. kolom = ceil(lebar / spacing), baris = ceil(panjang / spacing).
+        /// Metode luas (luas / coverage) ditampilkan sebagai pembanding.
+        /// </summary>
+        public void Calc(SpeakerSpec spk, SpacingMethod m, double ear, double margin)
         {
             H = CeilingH - ear;
             if (H <= 0.1)
             {
-                R = S = Spl = Tap = CoverageM2 = 0; Count = 0; Points.Clear();
+                R = S = Spl = Tap = CoverageM2 = TableHFt = DxM = DyM = 0; Count = AreaCount = 0; Points.Clear(); GridSize = "";
                 Status = "Plafon ≤ telinga"; Ok = false;
+                On(null);
+                return;
+            }
+
+            var row = Acoustics.TableRow(spk, H);
+            if (row != null)
+            {
+                TableHFt = row[0];
+                CoverageM2 = row[1] * Acoustics.SqFt;
+                R = row[2] * Acoustics.Ft;
+                S = (m == SpacingMethod.NoOverlap ? row[5] : row[3]) * Acoustics.Ft;
             }
             else
             {
+                TableHFt = 0;
                 R = Acoustics.CoverageRadius(H, spk.SpacingAngleDeg);
-                if (m == SpacingMethod.CoverageArea)
-                {
-                    // Luas lantai / luas coverage satu speaker (pi r^2), dibulatkan ke atas
-                    CoverageM2 = Math.PI * R * R;
-                    int n = Math.Max(1, (int)Math.Ceiling(Area / CoverageM2 - 1e-9));
-                    Points = GridLayout.LayoutCount(Space.Boundary, n);
-                    S = Math.Sqrt(Area / Math.Max(1, Points.Count));
-                }
-                else
-                {
-                    CoverageM2 = Math.PI * R * R;
-                    S = Acoustics.Spacing(R, m);
-                    Points = GridLayout.Layout(Space.Boundary, S, m == SpacingMethod.MinOverlapHex, full);
-                }
-                Count = Points.Count;
-                double target = Noise + margin;
-                var tap = Acoustics.PickTap(spk, H, target);
-                Tap = tap ?? spk.TapsW.Last();
-                Spl = Acoustics.Spl(spk.SensitivityDb, Tap, H);
-                Ok = tap != null;
-                Status = Ok == true ? "OK" : $"SPL kurang ({target:0} dB)";
+                CoverageM2 = Math.PI * R * R;
+                S = Acoustics.Spacing(R, m);
             }
+
+            Points = GridLayout.LayoutCells(Space.Boundary, S, out int nx, out int ny);
+            var b = Space.Boundary;
+            DxM = nx > 0 ? (b.Max(p => p.X) - b.Min(p => p.X)) / nx : 0;
+            DyM = ny > 0 ? (b.Max(p => p.Y) - b.Min(p => p.Y)) / ny : 0;
+            GridSize = $"{nx} × {ny}";
+            Count = Points.Count;
+            AreaCount = Math.Max(1, (int)Math.Ceiling(Area / CoverageM2 - 1e-9));
+
+            double target = Noise + margin;
+            var tap = Acoustics.PickTap(spk, H, target);
+            Tap = tap ?? spk.TapsW.Last();
+            Spl = Acoustics.Spl(spk.SensitivityDb, Tap, H);
+            Ok = tap != null;
+            Status = Ok == true ? "OK" : $"SPL kurang ({target:0} dB)";
             On(null);
         }
 
@@ -110,7 +130,7 @@ namespace PublicAddress.UI
             // Ceiling
             CeilSpeaker.ItemsSource = _lib.OfKind(SpeakerKind.Ceiling).ToList();
             CeilSpeaker.SelectedIndex = 0;
-            CeilMethod.SelectedIndex = 4; // Edge to Edge, sama dengan default Biamp
+            CeilMethod.SelectedIndex = 0; // No Overlap
             CeilFamily.ItemsSource = RevitData.GetCommTypes(doc, faceBased: false);
             CeilFamily.SelectedIndex = 0;
 
@@ -168,8 +188,7 @@ namespace PublicAddress.UI
         {
             if (!_ready || CeilSpeaker.SelectedItem is not SpeakerSpec spk) return;
             double ear = Num(CeilEar.Text, 1.2), margin = Num(CeilMargin.Text, 10);
-            bool full = CeilFull.IsChecked == true;
-            foreach (var r in VisibleRows) r.Calc(spk, Method, ear, margin, full);
+            foreach (var r in VisibleRows) r.Calc(spk, Method, ear, margin);
             var sel = VisibleRows.Where(r => r.Include).ToList();
             double w = sel.Sum(r => r.TotalW);
             int bad = sel.Count(r => r.Ok == false);
@@ -183,8 +202,6 @@ namespace PublicAddress.UI
             UpdateSpecText();
             CeilRecalc();
         }
-
-        void CeilCoverage_Click(object sender, RoutedEventArgs e) => CeilRecalc();
 
         void CeilLevelChanged(object sender, SelectionChangedEventArgs e)
         {
@@ -287,7 +304,7 @@ namespace PublicAddress.UI
 
                 var ans = MessageBox.Show(this,
                     $"Space {row.Number} {row.Name}  ({row.Area:0.0} m²)\n\n" +
-                    $"{row.Count} × {spk.Model} @ {F(row.Tap)} W   ·   spacing {row.S:0.00} m   ·   SPL {row.Spl:0.0} dB  ({row.Status})\n\n" +
+                    $"Grid {row.GridSize} = {row.Count} × {spk.Model} @ {F(row.Tap)} W\nJarak {row.DxM:0.00} × {row.DyM:0.00} m  ·  SPL {row.Spl:0.0} dB  ({row.Status})\n(metode luas: {row.AreaCount} unit)\n\n" +
                     "Ya = tempatkan lalu klik Space berikutnya\nTidak = lewati Space ini\nCancel = selesai",
                     "Preview Space", MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
                 if (ans == MessageBoxResult.Cancel) break;
@@ -337,16 +354,21 @@ namespace PublicAddress.UI
                 Canvas.SetLeft(dot, q.X - 3.5); Canvas.SetTop(dot, q.Y - 3.5);
                 c.Children.Add(dot);
             }
-            CeilPreviewInfo.Text = $"{row.Number} {row.Name} · {maxX - minX:0.0} × {maxY - minY:0.0} m\n" +
-                                   $"{row.Count} speaker · r {row.R:0.00} m · spacing {row.S:0.00} m · tap {F(row.Tap)} W · SPL {row.Spl:0.0} dB";
+            CeilPreviewInfo.Text =
+                $"{row.Number} {row.Name} · {maxX - minX:0.00} × {maxY - minY:0.00} m = {row.Area:0.0} m²\n" +
+                $"h-l = {row.H:0.00} m" + (row.TableHFt > 0 ? $" ≈ {row.TableHFt:0} ft (tabel)" : "") + $" · coverage {row.CoverageM2:0.0} m²\n" +
+                $"Grid {row.GridSize} = {row.Count} speaker · spacing tabel {row.S:0.00} m\n" +
+                $"Jarak aktual {row.DxM:0.00} × {row.DyM:0.00} m · ke dinding {row.DxM / 2:0.00} / {row.DyM / 2:0.00} m\n" +
+                $"Pembanding metode luas: {row.Area:0.0} ÷ {row.CoverageM2:0.0} = {row.AreaCount} unit\n" +
+                $"Tap {F(row.Tap)} W · SPL {row.Spl:0.0} dB";
         }
 
         void CeilExport_Click(object sender, RoutedEventArgs e)
         {
-            var sb = new StringBuilder("Level;No;Nama;Luas m2;Plafon m;Noise dBA;h m;r m;Coverage m2;Spacing m;Jumlah;Tap W;SPL dB;Total W;Status\n");
+            var sb = new StringBuilder("Level;No;Nama;Luas m2;Plafon m;Noise dBA;h m;h tabel ft;r m;Coverage m2;Spacing m;Grid;Jumlah;Metode luas;Tap W;SPL dB;Total W;Status\n");
             foreach (var r in VisibleRows.Where(r => r.Include))
-                sb.AppendLine(string.Join(";", r.Level, r.Number, r.Name, F(r.Area), F(r.CeilingH), F(r.Noise), F(r.H),
-                    F(r.R), F(r.CoverageM2), F(r.S), r.Count, F(r.Tap), r.Spl.ToString("0.0", CultureInfo.InvariantCulture), F(r.TotalW), r.Status));
+                sb.AppendLine(string.Join(";", r.Level, r.Number, r.Name, F(r.Area), F(r.CeilingH), F(r.Noise), F(r.H), F(r.TableHFt),
+                    F(r.R), F(r.CoverageM2), F(r.S), r.GridSize, r.Count, r.AreaCount, F(r.Tap), r.Spl.ToString("0.0", CultureInfo.InvariantCulture), F(r.TotalW), r.Status));
             SaveCsv(sb.ToString(), "PA_Ceiling.csv");
         }
 
@@ -422,6 +444,101 @@ namespace PublicAddress.UI
 
             Status(res.Message);
             RecapRefresh();
+            _lastHornPlaced = res.Placed;
+        }
+
+        int _lastHornPlaced;
+
+        /// <summary>Seperti ceiling: klik Space → preview rekomendasi → pilih face dinding → Space berikutnya.</summary>
+        void HornPickLoop_Click(object sender, RoutedEventArgs e)
+        {
+            if (HornFamily.SelectedItem is not FamilyTypeItem)
+            {
+                MessageBox.Show("Belum ada family Communication Devices (face-based) di project. Load family horn dulu.", "Public Address");
+                return;
+            }
+            int total = 0;
+            while (true)
+            {
+                Hide();
+                Autodesk.Revit.DB.ElementId id;
+                try { id = Placement.PickSpace(_uiapp.ActiveUIDocument); }
+                finally { Show(); Activate(); }
+                if (id == null) break;
+
+                var sp = (HornSpace.ItemsSource as IEnumerable<SpaceInfo>)?.FirstOrDefault(x => x.Id.Equals(id));
+                if (sp == null) { Status("Space ini tidak punya boundary yang valid."); continue; }
+                HornSpace.SelectedItem = sp;
+                HornRecommend_Click(sender, e);
+                if (_rec == null) break;
+                DrawHornPreview(sp, _rec);
+
+                var ans = MessageBox.Show(this,
+                    $"Space {sp.Number} {sp.Name}\n\n{_rec.Text}\n\n" +
+                    $"Ya = pilih {_rec.Rows} face dinding panjang lalu tempatkan ({_rec.PerWall} horn/dinding)\nTidak = lewati Space ini\nCancel = selesai",
+                    "Preview Horn", MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
+                if (ans == MessageBoxResult.Cancel) break;
+                if (ans != MessageBoxResult.Yes) continue;
+
+                HornApply_Click(sender, e);
+                _lastHornPlaced = 0;
+                HornPlace_Click(sender, e);
+                total += _lastHornPlaced;
+            }
+            Status($"Selesai. {total} horn ditempatkan pada sesi klik ini.");
+        }
+
+        void DrawHornPreview(SpaceInfo sp, HornRecommendation rec)
+        {
+            var c = HornPreview;
+            c.Children.Clear();
+            var poly = sp.Boundary;
+            if (poly.Count < 3 || HornSpeaker.SelectedItem is not SpeakerSpec h) return;
+            double minX = poly.Min(p => p.X), maxX = poly.Max(p => p.X), minY = poly.Min(p => p.Y), maxY = poly.Max(p => p.Y);
+            double cw = Math.Max(c.ActualWidth, 300), ch = Math.Max(c.ActualHeight, 180), pad = 10;
+            double k = Math.Min((cw - 2 * pad) / Math.Max(maxX - minX, 0.1), (ch - 2 * pad) / Math.Max(maxY - minY, 0.1));
+            System.Windows.Point P(double x, double y) => new(pad + (x - minX) * k, ch - pad - (y - minY) * k);
+
+            var room = new System.Windows.Shapes.Polygon
+            {
+                Stroke = System.Windows.Media.Brushes.SteelBlue, StrokeThickness = 2,
+                Fill = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0xE3, 0xF2, 0xFD)),
+            };
+            foreach (var p in poly) room.Points.Add(P(p.X, p.Y));
+            c.Children.Add(room);
+
+            // horn di dinding sisi panjang (bounding box), menembak ke dalam ruang
+            bool alongX = (maxX - minX) >= (maxY - minY);
+            double len = alongX ? maxX - minX : maxY - minY;
+            double half = h.CoverageHDeg / 2 * Math.PI / 180;
+            var walls = new List<(double sign, double pos)> { (1, alongX ? minY : minX) };
+            if (rec.Rows == 2) walls.Add((-1, alongX ? maxY : maxX));
+
+            foreach (var (sign, pos) in walls)
+            for (int i = 0; i < rec.PerWall; i++)
+            {
+                double t = (alongX ? minX : minY) + len * (i + 0.5) / rec.PerWall;
+                double hx = alongX ? t : pos, hy = alongX ? pos : t;
+                double ax = alongX ? 0 : sign, ay = alongX ? sign : 0;   // arah tembak
+                var fan = new System.Windows.Shapes.Polygon
+                {
+                    Stroke = System.Windows.Media.Brushes.DarkOrange, StrokeThickness = 1,
+                    Fill = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(0x40, 0xFF, 0x98, 0x00)),
+                };
+                fan.Points.Add(P(hx, hy));
+                for (int a = 0; a <= 20; a++)
+                {
+                    double ang = -half + 2 * half * a / 20;
+                    double dx = ax * Math.Cos(ang) - ay * Math.Sin(ang), dy = ax * Math.Sin(ang) + ay * Math.Cos(ang);
+                    fan.Points.Add(P(hx + dx * rec.ThrowM, hy + dy * rec.ThrowM));
+                }
+                c.Children.Add(fan);
+                var q = P(hx, hy);
+                var dot = new System.Windows.Shapes.Rectangle { Width = 9, Height = 9, Fill = System.Windows.Media.Brushes.Black };
+                Canvas.SetLeft(dot, q.X - 4.5); Canvas.SetTop(dot, q.Y - 4.5);
+                c.Children.Add(dot);
+            }
+            HornPreviewInfo.Text = rec.Text;
         }
 
         HornRecommendation _rec;

@@ -118,11 +118,8 @@
                                 <Grid.RowDefinitions><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
                                 <TextBlock Style="{StaticResource Lbl}" Text="Metode spacing"/>
                                 <ComboBox x:Name="CeilMethod" Grid.Column="1" SelectionChanged="CeilInputChanged">
-                                    <ComboBoxItem Content="Luas ÷ coverage area (standar)" Tag="CoverageArea"/>
-                                    <ComboBoxItem Content="Edge to Center (Biamp) - rapat" Tag="EdgeToCenter"/>
-                                    <ComboBoxItem Content="Partial Overlap (Biamp) - kotak" Tag="MinOverlapSquare"/>
-                                    <ComboBoxItem Content="Partial Overlap (Biamp) - hex" Tag="MinOverlapHex"/>
-                                    <ComboBoxItem Content="Edge to Edge (Biamp) - paling sedikit" Tag="NoOverlap"/>
+                                    <ComboBoxItem Content="No Overlap (grid)" Tag="NoOverlap"/>
+                                    <ComboBoxItem Content="Min. Overlap square (grid)" Tag="MinOverlapSquare"/>
                                 </ComboBox>
                                 <TextBlock Style="{StaticResource Lbl}" Grid.Row="1" Text="Tinggi telinga (m)"/>
                                 <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal">
@@ -131,13 +128,7 @@
                                 </StackPanel>
                                 <TextBlock Style="{StaticResource Lbl}" Grid.Row="2" Text="Level"/>
                                 <ComboBox x:Name="CeilLevel" Grid.Row="2" Grid.Column="1" SelectionChanged="CeilLevelChanged"/>
-                                <TextBlock Style="{StaticResource Lbl}" Grid.Row="3" Text="Cakupan ruangan"/>
-                                <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal">
-                                    <RadioButton x:Name="CeilCentered" Content="Terpusat" IsChecked="True" Margin="0,0,12,0" VerticalAlignment="Center" Click="CeilCoverage_Click"
-                                                 ToolTip="Lingkaran coverage muat di dalam ruang (jumlah = floor). Sama dengan Biamp 'Terpusat'."/>
-                                    <RadioButton x:Name="CeilFull" Content="Penuh" VerticalAlignment="Center" Click="CeilCoverage_Click"
-                                                 ToolTip="Coverage sampai ke dinding (jumlah = ceil)."/>
-                                </StackPanel>
+                                <TextBlock Grid.Row="3" Grid.ColumnSpan="2" Foreground="#90A4AE" Margin="0,4,0,0" Text="Spacing dari tabel datasheet · jumlah = ceil(lebar/s) × ceil(panjang/s)"/>
                             </Grid>
                         </GroupBox>
                         <GroupBox Header="Target SPL">
@@ -175,7 +166,7 @@
                     <Border DockPanel.Dock="Bottom" Style="{StaticResource Formula}">
                         <TextBlock TextWrapping="Wrap" Foreground="#5D4037">
                             <Run FontWeight="SemiBold" Text="Rumus: "/>
-                            <Run Text="h = plafon − telinga  ·  r = h·tan(sudut/2)  ·  coverage = π·r²  ·  Jumlah = ceil(luas lantai ÷ coverage)  |  metode grid: s = r (edge-center), r√2 (kotak), r√3 (hex), 2r (no overlap)  ·  SPL = Sens + 10·log(Tap) − 20·log(h)  ·  Tap = tap terkecil dengan SPL ≥ noise + margin"/>
+                            <Run Text="h−l = plafon − telinga → baris tabel datasheet terdekat (ft)  ·  spacing = kolom No Overlap / Min. Overlap (square)  ·  jumlah = ceil(lebar ÷ spacing) × ceil(panjang ÷ spacing)  ·  pembanding: luas ÷ coverage area  ·  SPL = Sens + 10·log(Tap) − 20·log(h)"/>
                         </TextBlock>
                     </Border>
 
@@ -193,8 +184,11 @@
                             <DataGridTextColumn Header="h (m)" Binding="{Binding H, StringFormat=0.00}" IsReadOnly="True" Width="55"/>
                             <DataGridTextColumn Header="r (m)" Binding="{Binding R, StringFormat=0.00}" IsReadOnly="True" Width="55"/>
                             <DataGridTextColumn Header="Coverage (m²)" Binding="{Binding CoverageM2, StringFormat=0.0}" IsReadOnly="True" Width="85"/>
+                            <DataGridTextColumn Header="h tabel (ft)" Binding="{Binding TableHFt}" IsReadOnly="True" Width="75"/>
                             <DataGridTextColumn Header="Spacing (m)" Binding="{Binding S, StringFormat=0.00}" IsReadOnly="True" Width="75"/>
+                            <DataGridTextColumn Header="Grid" Binding="{Binding GridSize}" IsReadOnly="True" Width="50"/>
                             <DataGridTextColumn Header="Jumlah" Binding="{Binding Count}" IsReadOnly="True" Width="60"/>
+                            <DataGridTextColumn Header="Mtd. luas" Binding="{Binding AreaCount}" IsReadOnly="True" Width="65"/>
                             <DataGridTextColumn Header="Tap (W)" Binding="{Binding Tap}" IsReadOnly="True" Width="60"/>
                             <DataGridTextColumn Header="SPL (dB)" Binding="{Binding Spl, StringFormat=0.0}" IsReadOnly="True" Width="65"/>
                             <DataGridTextColumn Header="Total (W)" Binding="{Binding TotalW}" IsReadOnly="True" Width="65"/>
@@ -279,12 +273,23 @@
                             </StackPanel>
                         </GroupBox>
                         <Button Style="{StaticResource Primary}" Margin="0,14,10,0" HorizontalAlignment="Stretch"
-                                Content="Pilih Face Dinding &amp; Tempatkan Horn" Click="HornPlace_Click"/>
+                                Content="Klik Space di Model (satu-satu)" Click="HornPickLoop_Click"
+                                ToolTip="Klik Space → preview rekomendasi → Ya = pilih face dinding &amp; tempatkan, Tidak = lewati, Cancel = selesai"/>
+                        <Button Style="{StaticResource Secondary}" Margin="0,8,10,0" HorizontalAlignment="Stretch"
+                                Content="Pilih Face Dinding &amp; Tempatkan (manual)" Click="HornPlace_Click"/>
                         <TextBlock Margin="0,6,10,0" TextWrapping="Wrap" Foreground="#78909C"
                                    Text="Klik sisi dinding yang menghadap area (bisa beberapa), lalu tekan Finish di Options Bar. Horn dibagi rata sepanjang dinding."/>
                     </StackPanel></ScrollViewer>
 
                     <DockPanel Grid.Column="1">
+                        <Border DockPanel.Dock="Top" Height="270" Background="White" BorderBrush="#D0D7E2" BorderThickness="1" CornerRadius="4" Padding="8" Margin="0,0,0,10">
+                            <DockPanel>
+                                <TextBlock DockPanel.Dock="Top" Text="Preview (ilustrasi)" FontWeight="SemiBold" Foreground="#1565C0"/>
+                                <TextBlock DockPanel.Dock="Bottom" x:Name="HornPreviewInfo" TextWrapping="Wrap" Foreground="#37474F"
+                                           Text="Klik 'Klik Space di Model' untuk melihat rekomendasi horn per Space."/>
+                                <Canvas x:Name="HornPreview" ClipToBounds="True" Margin="0,4"/>
+                            </DockPanel>
+                        </Border>
                         <TextBlock DockPanel.Dock="Top" Text="Radius SPL (on-axis, free field)" FontWeight="SemiBold" Foreground="#1565C0" Margin="0,0,0,6"/>
                         <Border DockPanel.Dock="Bottom" Style="{StaticResource Formula}">
                             <TextBlock TextWrapping="Wrap" Foreground="#5D4037">
