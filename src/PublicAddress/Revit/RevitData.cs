@@ -33,7 +33,7 @@ namespace PublicAddress.Revit
                     FamilyPlacementType.OneLevelBased => "non-hosted",
                     var x => x.ToString(),
                 };
-                return $"{Symbol.FamilyName} : {Symbol.Name}  [{pt} · {Symbol.Category?.Name}]";
+                return $"{Symbol.FamilyName} : {Symbol.Name}  [{pt}]";
             }
         }
         public override string ToString() => Display;
@@ -106,18 +106,9 @@ namespace PublicAddress.Revit
             return list.OrderBy(s => s.LevelName).ThenBy(s => s.Number).ToList();
         }
 
-        /// <summary>Kategori yang dibaca untuk speaker (Audio Visual Devices dicek by-name agar aman antar versi).</summary>
-        public static List<BuiltInCategory> SpeakerCategories()
-        {
-            var list = new List<BuiltInCategory>
-            {
-                BuiltInCategory.OST_CommunicationDevices,
-                BuiltInCategory.OST_ElectricalFixtures,
-                BuiltInCategory.OST_GenericModel,
-            };
-            if (Enum.TryParse("OST_AudioVisualDevices", out BuiltInCategory av)) list.Insert(1, av);
-            return list;
-        }
+        /// <summary>Hanya kategori Communication Devices yang dibaca.</summary>
+        public static List<BuiltInCategory> SpeakerCategories() =>
+            new() { BuiltInCategory.OST_CommunicationDevices };
 
         /// <summary>
         /// Semua family type speaker. Horn: face-based / work-plane / wall-hosted diutamakan di atas.
@@ -140,9 +131,7 @@ namespace PublicAddress.Revit
                     ? pt == FamilyPlacementType.WorkPlaneBased || pt == FamilyPlacementType.OneLevelBasedHosted
                     : pt == FamilyPlacementType.OneLevelBased;
             }
-            bool IsComm(FamilyTypeItem t) => t.Symbol.Category?.Id.Value == (long)BuiltInCategory.OST_CommunicationDevices;
-
-            return all.OrderByDescending(Preferred).ThenByDescending(IsComm).ThenBy(t => t.Display).ToList();
+            return all.OrderByDescending(Preferred).ThenBy(t => t.Display).ToList();
         }
 
         public static void SetComments(Element e, string text)
