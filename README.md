@@ -9,7 +9,8 @@ Tab ribbon **Public Address → PA Calculation**. Satu jendela dengan 3 tab:
 | Rekap & Amplifier | Total watt per level + ukuran amplifier 100 V, export CSV |
 
 ## Rumus
-- Ceiling: `h = plafon − telinga`, `r = h·tan(sudut/2)`, spacing `r` / `r√2` / `r√3` (hex) / `2r`,
+- Ceiling (default): `h = plafon − telinga`, `r = h·tan(sudut/2)`, coverage = π·r², jumlah = ceil(luas lantai ÷ coverage).
+  Metode grid (opsional): spacing `r` / `r√2` / `r√3` (hex) / `2r`,
   `SPL = Sens + 10·log(Tap) − 20·log(h)`, tap = tap terkecil yang memenuhi `noise + margin`.
 - Horn: `d = 10^((Sens + 10·log(Tap) − SPL)/20)`, jangkauan horizontal `√(d² − (tinggi pasang − telinga)²)`,
   lebar sebaran `2·jangkauan·tan(H/2)`. SC-615/T @15 W → 99 dB ≈ 17.3 m (17.1 m horizontal bila beda tinggi 2.5 m).

@@ -118,7 +118,8 @@
                                 <Grid.RowDefinitions><RowDefinition/><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
                                 <TextBlock Style="{StaticResource Lbl}" Text="Metode spacing"/>
                                 <ComboBox x:Name="CeilMethod" Grid.Column="1" SelectionChanged="CeilInputChanged">
-                                    <ComboBoxItem Content="Edge to center (terbaik)" Tag="EdgeToCenter"/>
+                                    <ComboBoxItem Content="Luas ÷ coverage area (standar)" Tag="CoverageArea"/>
+                                    <ComboBoxItem Content="Grid edge to center (terbaik)" Tag="EdgeToCenter"/>
                                     <ComboBoxItem Content="Min. overlap - grid kotak" Tag="MinOverlapSquare"/>
                                     <ComboBoxItem Content="Min. overlap - grid hex" Tag="MinOverlapHex"/>
                                     <ComboBoxItem Content="No overlap (hemat)" Tag="NoOverlap"/>
@@ -165,7 +166,7 @@
                     <Border DockPanel.Dock="Bottom" Style="{StaticResource Formula}">
                         <TextBlock TextWrapping="Wrap" Foreground="#5D4037">
                             <Run FontWeight="SemiBold" Text="Rumus: "/>
-                            <Run Text="h = plafon − telinga  ·  r = h·tan(sudut/2)  ·  s = r (edge-center), r√2 (kotak), r√3 (hex), 2r (no overlap)  ·  SPL = Sens + 10·log(Tap) − 20·log(h)  ·  Tap = tap terkecil dengan SPL ≥ noise + margin"/>
+                            <Run Text="h = plafon − telinga  ·  r = h·tan(sudut/2)  ·  coverage = π·r²  ·  Jumlah = ceil(luas lantai ÷ coverage)  |  metode grid: s = r (edge-center), r√2 (kotak), r√3 (hex), 2r (no overlap)  ·  SPL = Sens + 10·log(Tap) − 20·log(h)  ·  Tap = tap terkecil dengan SPL ≥ noise + margin"/>
                         </TextBlock>
                     </Border>
 
@@ -180,6 +181,7 @@
                             <DataGridTextColumn Header="Noise (dBA) ✎" Binding="{Binding Noise, StringFormat=0}" Width="85"/>
                             <DataGridTextColumn Header="h (m)" Binding="{Binding H, StringFormat=0.00}" IsReadOnly="True" Width="55"/>
                             <DataGridTextColumn Header="r (m)" Binding="{Binding R, StringFormat=0.00}" IsReadOnly="True" Width="55"/>
+                            <DataGridTextColumn Header="Coverage (m²)" Binding="{Binding CoverageM2, StringFormat=0.0}" IsReadOnly="True" Width="85"/>
                             <DataGridTextColumn Header="Spacing (m)" Binding="{Binding S, StringFormat=0.00}" IsReadOnly="True" Width="75"/>
                             <DataGridTextColumn Header="Jumlah" Binding="{Binding Count}" IsReadOnly="True" Width="60"/>
                             <DataGridTextColumn Header="Tap (W)" Binding="{Binding Tap}" IsReadOnly="True" Width="60"/>

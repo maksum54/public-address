@@ -33,6 +33,7 @@ namespace PublicAddress.UI
         public double H { get; private set; }
         public double R { get; private set; }
         public double S { get; private set; }
+        public double CoverageM2 { get; private set; }
         public int Count { get; private set; }
         public double Tap { get; private set; }
         public double Spl { get; private set; }
@@ -45,14 +46,26 @@ namespace PublicAddress.UI
             H = CeilingH - ear;
             if (H <= 0.1)
             {
-                R = S = Spl = Tap = 0; Count = 0; Points.Clear();
+                R = S = Spl = Tap = CoverageM2 = 0; Count = 0; Points.Clear();
                 Status = "Plafon ≤ telinga"; Ok = false;
             }
             else
             {
                 R = Acoustics.CoverageRadius(H, spk.SpacingAngleDeg);
-                S = Acoustics.Spacing(R, m);
-                Points = GridLayout.Layout(Space.Boundary, S, m == SpacingMethod.MinOverlapHex);
+                if (m == SpacingMethod.CoverageArea)
+                {
+                    // Luas lantai / luas coverage satu speaker (pi r^2), dibulatkan ke atas
+                    CoverageM2 = Math.PI * R * R;
+                    int n = Math.Max(1, (int)Math.Ceiling(Area / CoverageM2 - 1e-9));
+                    Points = GridLayout.LayoutCount(Space.Boundary, n);
+                    S = Math.Sqrt(Area / Math.Max(1, Points.Count));
+                }
+                else
+                {
+                    CoverageM2 = Math.PI * R * R;
+                    S = Acoustics.Spacing(R, m);
+                    Points = GridLayout.Layout(Space.Boundary, S, m == SpacingMethod.MinOverlapHex);
+                }
                 Count = Points.Count;
                 double target = Noise + margin;
                 var tap = Acoustics.PickTap(spk, H, target);
@@ -97,7 +110,7 @@ namespace PublicAddress.UI
             // Ceiling
             CeilSpeaker.ItemsSource = _lib.OfKind(SpeakerKind.Ceiling).ToList();
             CeilSpeaker.SelectedIndex = 0;
-            CeilMethod.SelectedIndex = 1;
+            CeilMethod.SelectedIndex = 0;
             CeilFamily.ItemsSource = RevitData.GetCommTypes(doc, faceBased: false);
             CeilFamily.SelectedIndex = 0;
 
@@ -236,10 +249,10 @@ namespace PublicAddress.UI
 
         void CeilExport_Click(object sender, RoutedEventArgs e)
         {
-            var sb = new StringBuilder("Level;No;Nama;Luas m2;Plafon m;Noise dBA;h m;r m;Spacing m;Jumlah;Tap W;SPL dB;Total W;Status\n");
+            var sb = new StringBuilder("Level;No;Nama;Luas m2;Plafon m;Noise dBA;h m;r m;Coverage m2;Spacing m;Jumlah;Tap W;SPL dB;Total W;Status\n");
             foreach (var r in VisibleRows.Where(r => r.Include))
                 sb.AppendLine(string.Join(";", r.Level, r.Number, r.Name, F(r.Area), F(r.CeilingH), F(r.Noise), F(r.H),
-                    F(r.R), F(r.S), r.Count, F(r.Tap), r.Spl.ToString("0.0", CultureInfo.InvariantCulture), F(r.TotalW), r.Status));
+                    F(r.R), F(r.CoverageM2), F(r.S), r.Count, F(r.Tap), r.Spl.ToString("0.0", CultureInfo.InvariantCulture), F(r.TotalW), r.Status));
             SaveCsv(sb.ToString(), "PA_Ceiling.csv");
         }
 

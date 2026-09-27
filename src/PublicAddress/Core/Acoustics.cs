@@ -6,6 +6,7 @@ namespace PublicAddress.Core
 {
     public enum SpacingMethod
     {
+        CoverageArea,     // N = ceil(luas lantai / (pi r^2))
         EdgeToCenter,     // s = r        (grid kotak)
         MinOverlapSquare, // s = r * sqrt2 (grid kotak)
         MinOverlapHex,    // s = r * sqrt3 (grid hex)
@@ -128,6 +129,33 @@ namespace PublicAddress.Core
                 }
                 res.Add(c);
             }
+            return res;
+        }
+
+        /// <summary>
+        /// Metode luas: N speaker dibagi rata dalam grid kolom x baris mengikuti proporsi ruang,
+        /// speaker di tengah tiap sel. Sel yang jatuh di luar boundary dibuang.
+        /// </summary>
+        public static List<P2> LayoutCount(IList<P2> poly, int n)
+        {
+            var res = new List<P2>();
+            if (poly.Count < 3 || n < 1) return res;
+            double minX = poly.Min(p => p.X), maxX = poly.Max(p => p.X);
+            double minY = poly.Min(p => p.Y), maxY = poly.Max(p => p.Y);
+            double w = maxX - minX, l = maxY - minY;
+            int nx = Math.Max(1, (int)Math.Ceiling(Math.Sqrt(n * w / Math.Max(l, 0.01))));
+            nx = Math.Min(nx, n);
+            int ny = (int)Math.Ceiling((double)n / nx);
+            for (int j = 0; j < ny && res.Count < n; j++)
+            {
+                int cols = Math.Min(nx, n - j * nx);   // baris terakhir boleh kurang
+                for (int i = 0; i < cols; i++)
+                {
+                    var p = new P2(minX + w * (i + 0.5) / cols, minY + l * (j + 0.5) / ny);
+                    if (Inside(poly, p)) res.Add(p);
+                }
+            }
+            if (res.Count == 0) res.AddRange(Layout(poly, Math.Max(w, l) * 2, false));
             return res;
         }
 
