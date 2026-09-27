@@ -87,7 +87,7 @@ namespace PublicAddress.Core
         /// Titik speaker di dalam polygon (satuan meter). Grid di-center-kan pada bounding box,
         /// titik di luar boundary dibuang. Minimal 1 speaker per ruang.
         /// </summary>
-        public static List<P2> Layout(IList<P2> poly, double s, bool hex)
+        public static List<P2> Layout(IList<P2> poly, double s, bool hex, bool full = true)
         {
             var res = new List<P2>();
             if (poly.Count < 3 || s <= 0) return res;
@@ -96,8 +96,10 @@ namespace PublicAddress.Core
             double w = maxX - minX, l = maxY - minY;
 
             double dx = s, dy = hex ? s * Math.Sqrt(3) / 2 : s;
-            int nx = Math.Max(1, (int)Math.Ceiling(w / dx));
-            int ny = Math.Max(1, (int)Math.Ceiling(l / dy));
+            // Penuh    : ceil  -> seluruh ruang ter-cover sampai dinding
+            // Terpusat : floor -> lingkaran coverage muat di dalam ruang (seperti Biamp "Centered")
+            int nx = Math.Max(1, full ? (int)Math.Ceiling(w / dx - 1e-6) : (int)Math.Floor(w / dx + 1e-6));
+            int ny = Math.Max(1, full ? (int)Math.Ceiling(l / dy - 1e-6) : (int)Math.Floor(l / dy + 1e-6));
             double x0 = minX + (w - (nx - 1) * dx) / 2;
             double y0 = minY + (l - (ny - 1) * dy) / 2;
 

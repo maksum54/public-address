@@ -41,7 +41,7 @@ namespace PublicAddress.UI
         public string Status { get; private set; } = "-";
         public bool? Ok { get; private set; }
 
-        public void Calc(SpeakerSpec spk, SpacingMethod m, double ear, double margin)
+        public void Calc(SpeakerSpec spk, SpacingMethod m, double ear, double margin, bool full)
         {
             H = CeilingH - ear;
             if (H <= 0.1)
@@ -64,7 +64,7 @@ namespace PublicAddress.UI
                 {
                     CoverageM2 = Math.PI * R * R;
                     S = Acoustics.Spacing(R, m);
-                    Points = GridLayout.Layout(Space.Boundary, S, m == SpacingMethod.MinOverlapHex);
+                    Points = GridLayout.Layout(Space.Boundary, S, m == SpacingMethod.MinOverlapHex, full);
                 }
                 Count = Points.Count;
                 double target = Noise + margin;
@@ -110,7 +110,7 @@ namespace PublicAddress.UI
             // Ceiling
             CeilSpeaker.ItemsSource = _lib.OfKind(SpeakerKind.Ceiling).ToList();
             CeilSpeaker.SelectedIndex = 0;
-            CeilMethod.SelectedIndex = 0;
+            CeilMethod.SelectedIndex = 4; // Edge to Edge, sama dengan default Biamp
             CeilFamily.ItemsSource = RevitData.GetCommTypes(doc, faceBased: false);
             CeilFamily.SelectedIndex = 0;
 
@@ -168,7 +168,8 @@ namespace PublicAddress.UI
         {
             if (!_ready || CeilSpeaker.SelectedItem is not SpeakerSpec spk) return;
             double ear = Num(CeilEar.Text, 1.2), margin = Num(CeilMargin.Text, 10);
-            foreach (var r in VisibleRows) r.Calc(spk, Method, ear, margin);
+            bool full = CeilFull.IsChecked == true;
+            foreach (var r in VisibleRows) r.Calc(spk, Method, ear, margin, full);
             var sel = VisibleRows.Where(r => r.Include).ToList();
             double w = sel.Sum(r => r.TotalW);
             int bad = sel.Count(r => r.Ok == false);
@@ -182,6 +183,8 @@ namespace PublicAddress.UI
             UpdateSpecText();
             CeilRecalc();
         }
+
+        void CeilCoverage_Click(object sender, RoutedEventArgs e) => CeilRecalc();
 
         void CeilLevelChanged(object sender, SelectionChangedEventArgs e)
         {

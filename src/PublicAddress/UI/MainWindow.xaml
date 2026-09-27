@@ -115,7 +115,7 @@
                         <GroupBox Header="Desain">
                             <Grid>
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition/></Grid.ColumnDefinitions>
-                                <Grid.RowDefinitions><RowDefinition/><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
+                                <Grid.RowDefinitions><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
                                 <TextBlock Style="{StaticResource Lbl}" Text="Metode spacing"/>
                                 <ComboBox x:Name="CeilMethod" Grid.Column="1" SelectionChanged="CeilInputChanged">
                                     <ComboBoxItem Content="Luas ÷ coverage area (standar)" Tag="CoverageArea"/>
@@ -131,6 +131,13 @@
                                 </StackPanel>
                                 <TextBlock Style="{StaticResource Lbl}" Grid.Row="2" Text="Level"/>
                                 <ComboBox x:Name="CeilLevel" Grid.Row="2" Grid.Column="1" SelectionChanged="CeilLevelChanged"/>
+                                <TextBlock Style="{StaticResource Lbl}" Grid.Row="3" Text="Cakupan ruangan"/>
+                                <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal">
+                                    <RadioButton x:Name="CeilCentered" Content="Terpusat" IsChecked="True" Margin="0,0,12,0" VerticalAlignment="Center" Click="CeilCoverage_Click"
+                                                 ToolTip="Lingkaran coverage muat di dalam ruang (jumlah = floor). Sama dengan Biamp 'Terpusat'."/>
+                                    <RadioButton x:Name="CeilFull" Content="Penuh" VerticalAlignment="Center" Click="CeilCoverage_Click"
+                                                 ToolTip="Coverage sampai ke dinding (jumlah = ceil)."/>
+                                </StackPanel>
                             </Grid>
                         </GroupBox>
                         <GroupBox Header="Target SPL">
