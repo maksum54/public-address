@@ -187,6 +187,16 @@ namespace PublicAddress.UI
                 HornSpec.Text = $"{h.CoverageHDeg}° H × {h.CoverageVDeg}° V · {h.SensitivityDb} dB (1W/1m) · maks {h.MaxPowerW} W";
         }
 
+        void RefreshFamilies_Click(object sender, RoutedEventArgs e)
+        {
+            var doc = _uiapp.ActiveUIDocument.Document;
+            CeilFamily.ItemsSource = RevitData.GetCommTypes(doc, faceBased: false);
+            CeilFamily.SelectedIndex = 0;
+            HornFamily.ItemsSource = RevitData.GetCommTypes(doc, faceBased: true);
+            HornFamily.SelectedIndex = 0;
+            Status($"Daftar family dimuat ulang: {CeilFamily.Items.Count} type.");
+        }
+
         // ---------------- CEILING ----------------
         SpacingMethod Method => Enum.Parse<SpacingMethod>((string)((ComboBoxItem)CeilMethod.SelectedItem).Tag);
 
@@ -261,7 +271,7 @@ namespace PublicAddress.UI
             CeilRecalc();
             if (CeilFamily.SelectedItem is not FamilyTypeItem fam)
             {
-                MessageBox.Show("Belum ada family Communication Devices (non-hosted) di project. Load family ceiling speaker dulu.", "Public Address");
+                MessageBox.Show("Belum ada family speaker di project. Load family lalu klik ↻.", "Public Address");
                 return;
             }
             var spk = (SpeakerSpec)CeilSpeaker.SelectedItem;
@@ -296,7 +306,7 @@ namespace PublicAddress.UI
         {
             if (CeilFamily.SelectedItem is not FamilyTypeItem fam)
             {
-                MessageBox.Show("Belum ada family Communication Devices (non-hosted) di project. Load family ceiling speaker dulu.", "Public Address");
+                MessageBox.Show("Belum ada family speaker di project. Load family lalu klik ↻.", "Public Address");
                 return;
             }
             var spk = (SpeakerSpec)CeilSpeaker.SelectedItem;
@@ -447,7 +457,7 @@ namespace PublicAddress.UI
         {
             if (HornFamily.SelectedItem is not FamilyTypeItem fam)
             {
-                MessageBox.Show("Belum ada family Communication Devices (face-based) di project. Load family horn dulu.", "Public Address");
+                MessageBox.Show("Belum ada family horn di project. Load family lalu klik ↻.", "Public Address");
                 return;
             }
             var hs = new HornSettings
@@ -479,7 +489,7 @@ namespace PublicAddress.UI
         {
             if (HornFamily.SelectedItem is not FamilyTypeItem)
             {
-                MessageBox.Show("Belum ada family Communication Devices (face-based) di project. Load family horn dulu.", "Public Address");
+                MessageBox.Show("Belum ada family horn di project. Load family lalu klik ↻.", "Public Address");
                 return;
             }
             int total = 0;

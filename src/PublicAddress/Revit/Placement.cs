@@ -160,7 +160,9 @@ namespace PublicAddress.Revit
                 {
                     double tt = tMin + (tMax - tMin) * (i + 0.5) / n;
                     var loc = origin + along * tt + XYZ.BasisZ * (z - origin.Z);
-                    var fi = doc.Create.NewFamilyInstance(r, loc, along, symbol);
+                    var fi = symbol.Family.FamilyPlacementType == FamilyPlacementType.OneLevelBasedHosted
+                        ? doc.Create.NewFamilyInstance(loc, symbol, along, wall, StructuralType.NonStructural)
+                        : doc.Create.NewFamilyInstance(r, loc, along, symbol);
                     var info = reaches.Count > 0 ? $"{reaches[0].db:0}dB@{reaches[0].reach:0.0}m" : "";
                     RevitData.SetComments(fi, new PaTag { Model = spk.Model, TapW = hs.TapW, Info = info }.Encode());
                     res.Placed++;

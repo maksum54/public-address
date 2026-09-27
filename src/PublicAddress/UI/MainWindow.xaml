@@ -108,7 +108,10 @@
                                 <TextBlock Style="{StaticResource Lbl}" Text="Model"/>
                                 <ComboBox x:Name="CeilSpeaker" Grid.Column="1" SelectionChanged="CeilInputChanged"/>
                                 <TextBlock Style="{StaticResource Lbl}" Grid.Row="1" Text="Family type"/>
-                                <ComboBox x:Name="CeilFamily" Grid.Row="1" Grid.Column="1" MinWidth="240"/>
+                                <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal">
+                                    <ComboBox x:Name="CeilFamily" MinWidth="240" MaxWidth="320"/>
+                                    <Button Style="{StaticResource Secondary}" Content="↻" Padding="6,0" ToolTip="Muat ulang daftar family (setelah Load Family)" Click="RefreshFamilies_Click"/>
+                                </StackPanel>
                                 <TextBlock x:Name="CeilSpec" Grid.Row="2" Grid.ColumnSpan="2" Foreground="#607D8B" Margin="0,4,0,0"/>
                             </Grid>
                         </GroupBox>
@@ -236,7 +239,10 @@
                                 <TextBlock Style="{StaticResource Lbl}" Grid.Row="1" Text="Tap 100 V (W)"/>
                                 <ComboBox x:Name="HornTap" Grid.Row="1" Grid.Column="1" MinWidth="80" HorizontalAlignment="Left" SelectionChanged="HornTapChanged"/>
                                 <TextBlock Style="{StaticResource Lbl}" Grid.Row="2" Text="Family (face-based)"/>
-                                <ComboBox x:Name="HornFamily" Grid.Row="2" Grid.Column="1" MinWidth="230"/>
+                                <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal">
+                                    <ComboBox x:Name="HornFamily" MinWidth="200" MaxWidth="230"/>
+                                    <Button Style="{StaticResource Secondary}" Content="↻" Padding="6,0" ToolTip="Muat ulang daftar family (setelah Load Family)" Click="RefreshFamilies_Click"/>
+                                </StackPanel>
                                 <TextBlock x:Name="HornSpec" Grid.Row="3" Grid.ColumnSpan="2" Foreground="#607D8B" Margin="0,4,0,0"/>
                             </Grid>
                         </GroupBox>

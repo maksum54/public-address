@@ -22,7 +22,20 @@ namespace PublicAddress.Revit
     public class FamilyTypeItem
     {
         public FamilySymbol Symbol;
-        public string Display => $"{Symbol.FamilyName} : {Symbol.Name}";
+        public string Display
+        {
+            get
+            {
+                var pt = Symbol.Family.FamilyPlacementType switch
+                {
+                    FamilyPlacementType.WorkPlaneBased => "face-based",
+                    FamilyPlacementType.OneLevelBasedHosted => "hosted",
+                    FamilyPlacementType.OneLevelBased => "non-hosted",
+                    var x => x.ToString(),
+                };
+                return $"{Symbol.FamilyName} : {Symbol.Name}  [{pt} · {Symbol.Category?.Name}]";
+            }
+        }
         public override string ToString() => Display;
     }
 
@@ -93,24 +106,43 @@ namespace PublicAddress.Revit
             return list.OrderBy(s => s.LevelName).ThenBy(s => s.Number).ToList();
         }
 
-        /// <summary>Family type kategori Communication Devices. faceBased=true untuk horn.</summary>
+        /// <summary>Kategori yang dibaca untuk speaker (Audio Visual Devices dicek by-name agar aman antar versi).</summary>
+        public static List<BuiltInCategory> SpeakerCategories()
+        {
+            var list = new List<BuiltInCategory>
+            {
+                BuiltInCategory.OST_CommunicationDevices,
+                BuiltInCategory.OST_ElectricalFixtures,
+                BuiltInCategory.OST_GenericModel,
+            };
+            if (Enum.TryParse("OST_AudioVisualDevices", out BuiltInCategory av)) list.Insert(1, av);
+            return list;
+        }
+
+        /// <summary>
+        /// Semua family type speaker. Horn: face-based / work-plane / wall-hosted diutamakan di atas.
+        /// Ceiling: non-hosted (level based) diutamakan. Tidak ada yang disembunyikan.
+        /// </summary>
         public static List<FamilyTypeItem> GetCommTypes(Document doc, bool faceBased)
         {
+            var cats = new ElementMulticategoryFilter(SpeakerCategories());
             var all = new FilteredElementCollector(doc)
                 .OfClass(typeof(FamilySymbol))
-                .OfCategory(BuiltInCategory.OST_CommunicationDevices)
+                .WherePasses(cats)
                 .Cast<FamilySymbol>()
                 .Select(s => new FamilyTypeItem { Symbol = s })
-                .OrderBy(s => s.Display)
                 .ToList();
 
-            var wanted = all.Where(t =>
+            bool Preferred(FamilyTypeItem t)
             {
                 var pt = t.Symbol.Family.FamilyPlacementType;
-                return faceBased ? pt == FamilyPlacementType.WorkPlaneBased
-                                 : pt == FamilyPlacementType.OneLevelBased;
-            }).ToList();
-            return wanted.Count > 0 ? wanted : all;
+                return faceBased
+                    ? pt == FamilyPlacementType.WorkPlaneBased || pt == FamilyPlacementType.OneLevelBasedHosted
+                    : pt == FamilyPlacementType.OneLevelBased;
+            }
+            bool IsComm(FamilyTypeItem t) => t.Symbol.Category?.Id.Value == (long)BuiltInCategory.OST_CommunicationDevices;
+
+            return all.OrderByDescending(Preferred).ThenByDescending(IsComm).ThenBy(t => t.Display).ToList();
         }
 
         public static void SetComments(Element e, string text)
@@ -124,7 +156,7 @@ namespace PublicAddress.Revit
         {
             var res = new List<(FamilyInstance, PaTag, string)>();
             foreach (var fi in new FilteredElementCollector(doc)
-                         .OfCategory(BuiltInCategory.OST_CommunicationDevices)
+                         .WherePasses(new ElementMulticategoryFilter(SpeakerCategories()))
                          .WhereElementIsNotElementType()
                          .OfType<FamilyInstance>())
             {
