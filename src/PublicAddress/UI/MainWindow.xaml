@@ -188,6 +188,7 @@
                             <DataGridTextColumn Header="Spacing (m)" Binding="{Binding S, StringFormat=0.00}" IsReadOnly="True" Width="75"/>
                             <DataGridTextColumn Header="Grid" Binding="{Binding GridSize}" IsReadOnly="True" Width="50"/>
                             <DataGridTextColumn Header="Jumlah" Binding="{Binding Count}" IsReadOnly="True" Width="60"/>
+                            <DataGridTextColumn Header="Qty manual ✎" Binding="{Binding ManualQty}" Width="85"/>
                             <DataGridTextColumn Header="Mtd. luas" Binding="{Binding AreaCount}" IsReadOnly="True" Width="65"/>
                             <DataGridTextColumn Header="Tap (W)" Binding="{Binding Tap}" IsReadOnly="True" Width="60"/>
                             <DataGridTextColumn Header="SPL (dB)" Binding="{Binding Spl, StringFormat=0.0}" IsReadOnly="True" Width="65"/>
@@ -214,7 +215,7 @@
                                 <TextBlock DockPanel.Dock="Top" Text="Preview" FontWeight="SemiBold" Foreground="#1565C0"/>
                                 <TextBlock DockPanel.Dock="Bottom" x:Name="CeilPreviewInfo" TextWrapping="Wrap" Foreground="#37474F" Margin="0,6,0,0"
                                            Text="Klik 'Klik Space di Model' atau pilih baris di tabel."/>
-                                <Canvas x:Name="CeilPreview" ClipToBounds="True" Margin="0,6,0,0"/>
+                                <Canvas x:Name="CeilPreview" ClipToBounds="True" Margin="0,6,0,0" SizeChanged="CeilPreview_SizeChanged"/>
                             </DockPanel>
                         </Border>
                     </Grid>
@@ -251,7 +252,7 @@
                                 <TextBox x:Name="HornDb" Grid.Row="2" Grid.Column="1" Text="99, 94, 90" Width="120" TextChanged="HornInputChanged"/>
                                 <TextBlock Style="{StaticResource Lbl}" Grid.Row="3" Text="Jumlah per dinding"/>
                                 <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal">
-                                    <TextBox x:Name="HornCount" Text="0" Width="50"/>
+                                    <TextBox x:Name="HornCount" Text="0" Width="50" TextChanged="HornInputChanged"/>
                                     <TextBlock Style="{StaticResource Lbl}" Margin="8,0" Text="0 = otomatis" Foreground="#90A4AE"/>
                                 </StackPanel>
                                 <CheckBox x:Name="HornDraw" Grid.Row="4" Grid.ColumnSpan="2" Margin="0,6,0,0" IsChecked="True"
@@ -261,7 +262,7 @@
                         <GroupBox Header="Rekomendasi dari Space" Margin="0,10,10,0">
                             <StackPanel>
                                 <StackPanel Orientation="Horizontal">
-                                    <ComboBox x:Name="HornSpace" MinWidth="200" DisplayMemberPath="Label"/>
+                                    <ComboBox x:Name="HornSpace" MinWidth="200" DisplayMemberPath="Label" SelectionChanged="HornSpace_Changed"/>
                                     <Button Style="{StaticResource Secondary}" Content="Klik di Model" Padding="8,2" Click="HornPickSpace_Click"/>
                                 </StackPanel>
                                 <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
@@ -287,7 +288,7 @@
                                 <TextBlock DockPanel.Dock="Top" Text="Preview (ilustrasi)" FontWeight="SemiBold" Foreground="#1565C0"/>
                                 <TextBlock DockPanel.Dock="Bottom" x:Name="HornPreviewInfo" TextWrapping="Wrap" Foreground="#37474F"
                                            Text="Klik 'Klik Space di Model' untuk melihat rekomendasi horn per Space."/>
-                                <Canvas x:Name="HornPreview" ClipToBounds="True" Margin="0,4"/>
+                                <Canvas x:Name="HornPreview" ClipToBounds="True" Margin="0,4" SizeChanged="HornPreview_SizeChanged"/>
                             </DockPanel>
                         </Border>
                         <TextBlock DockPanel.Dock="Top" Text="Radius SPL (on-axis, free field)" FontWeight="SemiBold" Foreground="#1565C0" Margin="0,0,0,6"/>

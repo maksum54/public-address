@@ -43,6 +43,8 @@ namespace PublicAddress.UI
 
         public double TableHFt { get; private set; }
         public int AreaCount { get; private set; }
+        /// <summary>Jumlah manual dari user (0 = otomatis dari grid).</summary>
+        public int ManualQty { get; set; }
         public string GridSize { get; private set; } = "";
         public double DxM { get; private set; }
         public double DyM { get; private set; }
@@ -85,6 +87,12 @@ namespace PublicAddress.UI
             DxM = nx > 0 ? (b.Max(p => p.X) - b.Min(p => p.X)) / nx : 0;
             DyM = ny > 0 ? (b.Max(p => p.Y) - b.Min(p => p.Y)) / ny : 0;
             GridSize = $"{nx} × {ny}";
+            if (ManualQty > 0)
+            {
+                Points = GridLayout.LayoutCount(Space.Boundary, ManualQty);
+                GridSize = "manual";
+                DxM = DyM = Math.Sqrt(Area / ManualQty);
+            }
             Count = Points.Count;
             AreaCount = Math.Max(1, (int)Math.Ceiling(Area / CoverageM2 - 1e-9));
 
@@ -194,6 +202,17 @@ namespace PublicAddress.UI
             int bad = sel.Count(r => r.Ok == false);
             CeilSummary.Text = $"{sel.Count} Space · {sel.Sum(r => r.Count)} speaker · {F(w)} W · amplifier ≥ {F(Acoustics.AmplifierSize(w))} W"
                                + (bad > 0 ? $" · {bad} Space SPL kurang" : "");
+            if (CeilGrid.SelectedItem is CeilingRow cur) DrawPreview(cur);
+        }
+
+        void CeilPreview_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            if (CeilGrid.SelectedItem is CeilingRow cur) DrawPreview(cur);
+        }
+
+        void HornPreview_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            if (_rec != null && HornSpace.SelectedItem is SpaceInfo sp) DrawHornPreview(sp, _rec);
         }
 
         void CeilInputChanged(object sender, SelectionChangedEventArgs e)
@@ -416,6 +435,12 @@ namespace PublicAddress.UI
                 first.Reach > 0
                     ? $"{h.Model} @ {F(tap)} W: {first.Db:0} dB tercapai sampai {first.Reach:0.0} m dari dinding (lebar ±{first.Width:0.0} m)"
                     : $"{first.Db:0} dB tidak tercapai di tinggi telinga (horn terlalu tinggi / tap terlalu kecil)";
+            if (_rec != null && HornSpace.SelectedItem is SpaceInfo) HornRecommend_Click(null, null);
+        }
+
+        void HornSpace_Changed(object sender, SelectionChangedEventArgs e)
+        {
+            if (_ready && HornSpace.SelectedItem is SpaceInfo) HornRecommend_Click(null, null);
         }
 
         void HornPlace_Click(object sender, RoutedEventArgs e)
@@ -515,9 +540,11 @@ namespace PublicAddress.UI
             if (rec.Rows == 2) walls.Add((-1, alongX ? maxY : maxX));
 
             foreach (var (sign, pos) in walls)
-            for (int i = 0; i < rec.PerWall; i++)
+            int perWall = (int)Num(HornCount.Text, 0);
+            if (perWall <= 0) perWall = rec.PerWall;
+            for (int i = 0; i < perWall; i++)
             {
-                double t = (alongX ? minX : minY) + len * (i + 0.5) / rec.PerWall;
+                double t = (alongX ? minX : minY) + len * (i + 0.5) / perWall;
                 double hx = alongX ? t : pos, hy = alongX ? pos : t;
                 double ax = alongX ? 0 : sign, ay = alongX ? sign : 0;   // arah tembak
                 var fan = new System.Windows.Shapes.Polygon
@@ -538,7 +565,9 @@ namespace PublicAddress.UI
                 Canvas.SetLeft(dot, q.X - 4.5); Canvas.SetTop(dot, q.Y - 4.5);
                 c.Children.Add(dot);
             }
-            HornPreviewInfo.Text = rec.Text;
+            HornPreviewInfo.Text = perWall == rec.PerWall
+                ? rec.Text
+                : $"Manual: {perWall} horn/dinding × {walls.Count} dinding = {perWall * walls.Count} horn (rekomendasi {rec.Total}).";
         }
 
         HornRecommendation _rec;
@@ -565,6 +594,7 @@ namespace PublicAddress.UI
             HornRecText.Text = _rec.Text;
             HornRecText.Foreground = _rec.Ok ? System.Windows.Media.Brushes.DarkGreen : System.Windows.Media.Brushes.Firebrick;
             HornApply.IsEnabled = true;
+            DrawHornPreview(sp, _rec);
         }
 
         void HornApply_Click(object sender, RoutedEventArgs e)
