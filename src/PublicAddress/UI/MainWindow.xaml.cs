@@ -539,9 +539,9 @@ namespace PublicAddress.UI
             var walls = new List<(double sign, double pos)> { (1, alongX ? minY : minX) };
             if (rec.Rows == 2) walls.Add((-1, alongX ? maxY : maxX));
 
-            foreach (var (sign, pos) in walls)
             int perWall = (int)Num(HornCount.Text, 0);
             if (perWall <= 0) perWall = rec.PerWall;
+            foreach (var (sign, pos) in walls)
             for (int i = 0; i < perWall; i++)
             {
                 double t = (alongX ? minX : minY) + len * (i + 0.5) / perWall;
