@@ -162,10 +162,12 @@
                         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                             <Button Style="{StaticResource Secondary}" Content="Export CSV" Click="CeilExport_Click"/>
                             <Button Style="{StaticResource Secondary}" Content="Hitung" Click="CeilCalc_Click"/>
-                            <Button Style="{StaticResource Primary}" Content="Tempatkan Speaker di Model" Click="CeilPlace_Click"/>
+                            <Button Style="{StaticResource Secondary}" Content="Tempatkan yang dicentang" Click="CeilPlace_Click"/>
+                            <Button Style="{StaticResource Primary}" Content="Klik Space di Model (satu-satu)" Click="CeilPick_Click"
+                                    ToolTip="Klik satu Space → preview → Ya = tempatkan &amp; lanjut Space berikutnya, Tidak = lewati, Cancel = selesai"/>
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                            <CheckBox Content="Pilih semua" VerticalAlignment="Center" Click="CeilSelectAll_Click" x:Name="CeilAll" IsChecked="True"/>
+                            <CheckBox Content="Pilih semua" VerticalAlignment="Center" Click="CeilSelectAll_Click" x:Name="CeilAll" IsChecked="False"/>
                             <TextBlock x:Name="CeilSummary" Margin="16,0" FontWeight="SemiBold" Foreground="#1565C0" VerticalAlignment="Center"/>
                         </StackPanel>
                     </DockPanel>
@@ -177,7 +179,9 @@
                         </TextBlock>
                     </Border>
 
-                    <DataGrid x:Name="CeilGrid" Margin="0,10,0,0" CellEditEnding="CeilGrid_CellEditEnding">
+                    <Grid Margin="0,10,0,0">
+                        <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="340"/></Grid.ColumnDefinitions>
+                        <DataGrid x:Name="CeilGrid" CellEditEnding="CeilGrid_CellEditEnding" SelectionChanged="CeilGrid_SelectionChanged">
                         <DataGrid.Columns>
                             <DataGridCheckBoxColumn Header="✓" Binding="{Binding Include, UpdateSourceTrigger=PropertyChanged}" Width="32"/>
                             <DataGridTextColumn Header="Level" Binding="{Binding Level}" IsReadOnly="True" Width="90"/>
@@ -211,6 +215,15 @@
                             </DataGridTextColumn>
                         </DataGrid.Columns>
                     </DataGrid>
+                        <Border Grid.Column="1" Margin="10,0,0,0" Background="White" BorderBrush="#D0D7E2" BorderThickness="1" CornerRadius="4" Padding="8">
+                            <DockPanel>
+                                <TextBlock DockPanel.Dock="Top" Text="Preview" FontWeight="SemiBold" Foreground="#1565C0"/>
+                                <TextBlock DockPanel.Dock="Bottom" x:Name="CeilPreviewInfo" TextWrapping="Wrap" Foreground="#37474F" Margin="0,6,0,0"
+                                           Text="Klik 'Klik Space di Model' atau pilih baris di tabel."/>
+                                <Canvas x:Name="CeilPreview" ClipToBounds="True" Margin="0,6,0,0"/>
+                            </DockPanel>
+                        </Border>
+                    </Grid>
                 </DockPanel>
             </TabItem>
 

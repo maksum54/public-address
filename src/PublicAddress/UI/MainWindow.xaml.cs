@@ -21,7 +21,7 @@ namespace PublicAddress.UI
         public SpaceInfo Space;
         public List<P2> Points = new();
 
-        bool _include = true;
+        bool _include = false;
         public bool Include { get => _include; set { _include = value; On(); } }
         public string Level => Space.LevelName;
         public string Number => Space.Number;
@@ -231,10 +231,14 @@ namespace PublicAddress.UI
             var spk = (SpeakerSpec)CeilSpeaker.SelectedItem;
             var rows = VisibleRows.Where(r => r.Include && r.Count > 0).ToList();
             int total = rows.Sum(r => r.Count);
-            if (total == 0) { Status("Tidak ada speaker untuk ditempatkan."); return; }
+            if (total == 0) { Status("Centang Space dulu, atau pakai 'Klik Space di Model'."); return; }
             if (MessageBox.Show($"Tempatkan {total} speaker {spk.Model} ({fam.Display}) di {rows.Count} Space?",
                     "Public Address", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
+            PlaceRows(fam, spk, rows);
+        }
 
+        bool PlaceRows(FamilyTypeItem fam, SpeakerSpec spk, List<CeilingRow> rows)
+        {
             try
             {
                 int n = Placement.PlaceCeiling(_uiapp.ActiveUIDocument.Document, fam.Symbol, rows.Select(r => new CeilingPlacement
@@ -246,8 +250,95 @@ namespace PublicAddress.UI
                 }));
                 Status($"{n} ceiling speaker ditempatkan.");
                 RecapRefresh();
+                return true;
             }
-            catch (Exception ex) { MessageBox.Show(ex.Message, "Gagal menempatkan speaker"); }
+            catch (Exception ex) { MessageBox.Show(ex.Message, "Gagal menempatkan speaker"); return false; }
+        }
+
+        /// <summary>Seperti tool fire alarm: klik satu Space, lihat preview, konfirmasi, lanjut ke Space berikutnya.</summary>
+        void CeilPick_Click(object sender, RoutedEventArgs e)
+        {
+            if (CeilFamily.SelectedItem is not FamilyTypeItem fam)
+            {
+                MessageBox.Show("Belum ada family Communication Devices (non-hosted) di project. Load family ceiling speaker dulu.", "Public Address");
+                return;
+            }
+            var spk = (SpeakerSpec)CeilSpeaker.SelectedItem;
+            if (CeilLevel.SelectedIndex != 0) CeilLevel.SelectedIndex = 0;
+            int placed = 0;
+
+            while (true)
+            {
+                Hide();
+                Autodesk.Revit.DB.ElementId id;
+                try { id = Placement.PickSpace(_uiapp.ActiveUIDocument); }
+                finally { Show(); Activate(); }
+                if (id == null) break;
+
+                var row = _allRows.FirstOrDefault(r => r.Space.Id.Equals(id));
+                if (row == null) { Status("Space ini tidak punya boundary yang valid."); continue; }
+
+                foreach (var r in _allRows) r.Include = false;
+                row.Include = true;
+                CeilRecalc();
+                CeilGrid.SelectedItem = row;
+                CeilGrid.ScrollIntoView(row);
+                DrawPreview(row);
+
+                var ans = MessageBox.Show(this,
+                    $"Space {row.Number} {row.Name}  ({row.Area:0.0} m²)\n\n" +
+                    $"{row.Count} × {spk.Model} @ {F(row.Tap)} W   ·   spacing {row.S:0.00} m   ·   SPL {row.Spl:0.0} dB  ({row.Status})\n\n" +
+                    "Ya = tempatkan lalu klik Space berikutnya\nTidak = lewati Space ini\nCancel = selesai",
+                    "Preview Space", MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
+                if (ans == MessageBoxResult.Cancel) break;
+                if (ans == MessageBoxResult.Yes && row.Count > 0 && PlaceRows(fam, spk, new List<CeilingRow> { row }))
+                    placed += row.Count;
+            }
+            Status($"Selesai. {placed} speaker ditempatkan pada sesi klik ini.");
+        }
+
+        void CeilGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (CeilGrid.SelectedItem is CeilingRow r) DrawPreview(r);
+        }
+
+        void DrawPreview(CeilingRow row)
+        {
+            var c = CeilPreview;
+            c.Children.Clear();
+            var poly = row.Space.Boundary;
+            if (poly.Count < 3) return;
+            double minX = poly.Min(p => p.X), maxX = poly.Max(p => p.X), minY = poly.Min(p => p.Y), maxY = poly.Max(p => p.Y);
+            double cw = Math.Max(c.ActualWidth, 300), ch = Math.Max(c.ActualHeight, 260), pad = 10;
+            double k = Math.Min((cw - 2 * pad) / Math.Max(maxX - minX, 0.1), (ch - 2 * pad) / Math.Max(maxY - minY, 0.1));
+            System.Windows.Point P(double x, double y) => new(pad + (x - minX) * k, ch - pad - (y - minY) * k);
+
+            var room = new System.Windows.Shapes.Polygon
+            {
+                Stroke = System.Windows.Media.Brushes.SteelBlue, StrokeThickness = 2,
+                Fill = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0xE3, 0xF2, 0xFD)),
+            };
+            foreach (var p in poly) room.Points.Add(P(p.X, p.Y));
+            c.Children.Add(room);
+
+            foreach (var p in row.Points)
+            {
+                var q = P(p.X, p.Y);
+                double rr = row.R * k;
+                var circle = new System.Windows.Shapes.Ellipse
+                {
+                    Width = 2 * rr, Height = 2 * rr,
+                    Stroke = System.Windows.Media.Brushes.Gray, StrokeDashArray = new System.Windows.Media.DoubleCollection { 3, 3 },
+                    Fill = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(0x40, 0xFF, 0xEB, 0x3B)),
+                };
+                Canvas.SetLeft(circle, q.X - rr); Canvas.SetTop(circle, q.Y - rr);
+                c.Children.Add(circle);
+                var dot = new System.Windows.Shapes.Ellipse { Width = 7, Height = 7, Fill = System.Windows.Media.Brushes.Black };
+                Canvas.SetLeft(dot, q.X - 3.5); Canvas.SetTop(dot, q.Y - 3.5);
+                c.Children.Add(dot);
+            }
+            CeilPreviewInfo.Text = $"{row.Number} {row.Name} · {maxX - minX:0.0} × {maxY - minY:0.0} m\n" +
+                                   $"{row.Count} speaker · r {row.R:0.00} m · spacing {row.S:0.00} m · tap {F(row.Tap)} W · SPL {row.Spl:0.0} dB";
         }
 
         void CeilExport_Click(object sender, RoutedEventArgs e)
