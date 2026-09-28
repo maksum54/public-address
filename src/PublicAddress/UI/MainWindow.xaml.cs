@@ -46,6 +46,13 @@ namespace PublicAddress.UI
         /// <summary>Jumlah manual dari user (0 = otomatis dari grid).</summary>
         public int ManualQty { get; set; }
         public string GridSize { get; private set; } = "";
+        public SpacingMethod Method { get; private set; }
+        /// <summary>Input desain milik Space ini (dari dialog per-Space atau tombol Hitung).</summary>
+        public CeilSettings Opt { get; set; } = new();
+        public string MethodName => Method == SpacingMethod.SplLimited ? "SPL dibatasi"
+                                  : Method == SpacingMethod.MinOverlapSquare ? "Min. Overlap" : "No Overlap";
+
+        public void Recalc(SpeakerSpec spk) => Calc(spk, Opt.Method, Opt.Ear, Opt.Margin, Opt.AngleFactor, Opt.MaxAngleDeg);
         public double DxM { get; private set; }
         public double DyM { get; private set; }
 
@@ -53,10 +60,13 @@ namespace PublicAddress.UI
         /// 1. h = plafon - telinga, dibulatkan ke baris tabel datasheet terdekat (ft).
         /// 2. spacing dari tabel: No Overlap atau Min. Overlap (square).
         /// 3. kolom = ceil(lebar / spacing), baris = ceil(panjang / spacing).
+        /// Metode SPL dibatasi: r dari jangkauan SPL, dibatasi sudut cone x faktor, spacing = 2r.
         /// Metode luas (luas / coverage) ditampilkan sebagai pembanding.
         /// </summary>
-        public void Calc(SpeakerSpec spk, SpacingMethod m, double ear, double margin)
+        public void Calc(SpeakerSpec spk, SpacingMethod m, double ear, double margin,
+            double angleFactor = 1.5, double maxAngleDeg = 140)
         {
+            Method = m;
             H = CeilingH - ear;
             if (H <= 0.1)
             {
@@ -66,8 +76,19 @@ namespace PublicAddress.UI
                 return;
             }
 
-            var row = Acoustics.TableRow(spk, H);
-            if (row != null)
+            double target = Noise + margin;
+            bool? splOk = null;
+            double splTap = 0;
+            var row = m == SpacingMethod.SplLimited ? null : Acoustics.TableRow(spk, H);
+            if (m == SpacingMethod.SplLimited)
+            {
+                TableHFt = 0;
+                R = Acoustics.SplLimitedRadius(spk, H, target, angleFactor, maxAngleDeg, out splTap, out bool okSpl);
+                splOk = okSpl;
+                CoverageM2 = Math.PI * R * R;
+                S = 2 * R;
+            }
+            else if (row != null)
             {
                 TableHFt = row[0];
                 CoverageM2 = row[1] * Acoustics.SqFt;
@@ -94,19 +115,78 @@ namespace PublicAddress.UI
                 DxM = DyM = Math.Sqrt(Area / ManualQty);
             }
             Count = Points.Count;
-            AreaCount = Math.Max(1, (int)Math.Ceiling(Area / CoverageM2 - 1e-9));
+            AreaCount = CoverageM2 > 0 ? Math.Max(1, (int)Math.Ceiling(Area / CoverageM2 - 1e-9)) : 0;
 
-            double target = Noise + margin;
-            var tap = Acoustics.PickTap(spk, H, target);
-            Tap = tap ?? spk.TapsW.Last();
-            Spl = Acoustics.Spl(spk.SensitivityDb, Tap, H);
-            Ok = tap != null;
-            Status = Ok == true ? "OK" : $"SPL kurang ({target:0} dB)";
+            if (splOk != null)
+            {
+                // SPL dicek di tepi coverage (jarak miring ke titik terjauh), bukan tepat di bawah speaker
+                Tap = splTap;
+                Spl = Acoustics.Spl(spk.SensitivityDb, Tap, Math.Sqrt(H * H + R * R));
+                Ok = splOk.Value && R > 0.05;
+                Status = Ok == true ? "OK" : R <= 0.05 ? $"SPL kurang ({target:0} dB)" : $"r dibatasi SPL ({target:0} dB)";
+            }
+            else
+            {
+                var tap = Acoustics.PickTap(spk, H, target);
+                Tap = tap ?? spk.TapsW.Last();
+                Spl = Acoustics.Spl(spk.SensitivityDb, Tap, H);
+                Ok = tap != null;
+                Status = Ok == true ? "OK" : $"SPL kurang ({target:0} dB)";
+            }
             On(null);
         }
 
         public event PropertyChangedEventHandler PropertyChanged;
         void On([CallerMemberName] string p = null) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(p));
+    }
+
+    /// <summary>Gambar preview layout ceiling speaker; dipakai tabel utama dan dialog per-Space.</summary>
+    public static class CeilingPreview
+    {
+        static string F(double v) => v.ToString("0.##", CultureInfo.InvariantCulture);
+
+        public static string Draw(Canvas c, CeilingRow row)
+        {
+            c.Children.Clear();
+            var poly = row.Space.Boundary;
+            if (poly.Count < 3) return "";
+            double minX = poly.Min(p => p.X), maxX = poly.Max(p => p.X), minY = poly.Min(p => p.Y), maxY = poly.Max(p => p.Y);
+            double cw = Math.Max(c.ActualWidth, 300), ch = Math.Max(c.ActualHeight, 260), pad = 10;
+            double k = Math.Min((cw - 2 * pad) / Math.Max(maxX - minX, 0.1), (ch - 2 * pad) / Math.Max(maxY - minY, 0.1));
+            System.Windows.Point P(double x, double y) => new(pad + (x - minX) * k, ch - pad - (y - minY) * k);
+
+            var room = new System.Windows.Shapes.Polygon
+            {
+                Stroke = System.Windows.Media.Brushes.SteelBlue, StrokeThickness = 2,
+                Fill = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0xE3, 0xF2, 0xFD)),
+            };
+            foreach (var p in poly) room.Points.Add(P(p.X, p.Y));
+            c.Children.Add(room);
+
+            foreach (var p in row.Points)
+            {
+                var q = P(p.X, p.Y);
+                double rr = row.R * k;
+                var circle = new System.Windows.Shapes.Ellipse
+                {
+                    Width = 2 * rr, Height = 2 * rr,
+                    Stroke = System.Windows.Media.Brushes.Gray, StrokeDashArray = new System.Windows.Media.DoubleCollection { 3, 3 },
+                    Fill = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(0x40, 0xFF, 0xEB, 0x3B)),
+                };
+                Canvas.SetLeft(circle, q.X - rr); Canvas.SetTop(circle, q.Y - rr);
+                c.Children.Add(circle);
+                var dot = new System.Windows.Shapes.Ellipse { Width = 7, Height = 7, Fill = System.Windows.Media.Brushes.Black };
+                Canvas.SetLeft(dot, q.X - 3.5); Canvas.SetTop(dot, q.Y - 3.5);
+                c.Children.Add(dot);
+            }
+            return
+                $"{row.Number} {row.Name} · {maxX - minX:0.00} × {maxY - minY:0.00} m = {row.Area:0.0} m²\n" +
+                $"h-l = {row.H:0.00} m" + (row.TableHFt > 0 ? $" ≈ {row.TableHFt:0} ft (tabel)" : "") + $" · coverage {row.CoverageM2:0.0} m²\n" +
+                $"Grid {row.GridSize} = {row.Count} speaker · spacing {(row.Method == SpacingMethod.SplLimited ? "2r" : "tabel")} {row.S:0.00} m\n" +
+                $"Jarak aktual {row.DxM:0.00} × {row.DyM:0.00} m · ke dinding {row.DxM / 2:0.00} / {row.DyM / 2:0.00} m\n" +
+                $"Pembanding metode luas: {row.Area:0.0} ÷ {row.CoverageM2:0.0} = {row.AreaCount} unit\n" +
+                $"Tap {F(row.Tap)} W · SPL {row.Spl:0.0} dB" + (row.Method == SpacingMethod.SplLimited ? " (di tepi coverage)" : "");
+        }
     }
 
     public class HornRow { public double Db { get; set; } public double Slant { get; set; } public double Reach { get; set; } public double Width { get; set; } }
@@ -117,7 +197,8 @@ namespace PublicAddress.UI
         readonly UIApplication _uiapp;
         readonly RevitRunner _runner = new RevitRunner();
         readonly SpeakerLibrary _lib;
-        readonly ObservableCollection<CeilingRow> _allRows = new();
+        readonly ObservableCollection<CeilingRow> _allRows = new();   // hanya Space yang sudah diklik user
+        List<SpaceInfo> _spaces = new();
         bool _ready;
 
         public MainWindow(UIApplication uiapp)
@@ -143,13 +224,9 @@ namespace PublicAddress.UI
             CeilFamily.ItemsSource = RevitData.GetCommTypes(doc, faceBased: false);
             CeilFamily.SelectedIndex = 0;
 
-            double noise = Num(CeilNoise.Text, 50);
-            foreach (var sp in RevitData.GetSpaces(doc))
-                _allRows.Add(new CeilingRow { Space = sp, CeilingH = Num(CeilBulkH.Text, 3), Noise = noise });
-            var levels = new List<string> { "(Semua level)" };
-            levels.AddRange(_allRows.Select(r => r.Level).Distinct());
-            CeilLevel.ItemsSource = levels;
-            CeilLevel.SelectedIndex = 0;
+            // Tabel sengaja kosong di awal: Space masuk satu per satu lewat 'Klik Space di Model'.
+            _spaces = RevitData.GetSpaces(doc).ToList();
+            RefreshLevels();
 
             // Horn
             var horns = _lib.OfKind(SpeakerKind.Horn).ToList();
@@ -157,16 +234,16 @@ namespace PublicAddress.UI
             HornSpeaker.SelectedItem = horns.FirstOrDefault(h => h.Model.Contains("615")) ?? horns.FirstOrDefault();
             HornFamily.ItemsSource = RevitData.GetCommTypes(doc, faceBased: true);
             HornFamily.SelectedIndex = 0;
-            HornSpace.ItemsSource = _allRows.Select(r => r.Space).ToList();
+            HornSpace.ItemsSource = _spaces;
 
             _ready = true;
             UpdateSpecText();
             CeilRecalc();
             UpdateHorn();
             RecapRefresh();
-            Status(_allRows.Count == 0
+            Status(_spaces.Count == 0
                 ? "Tidak ada MEP Space di model. Buat Space dulu untuk tab Ceiling Speaker."
-                : $"{_allRows.Count} Space terbaca.");
+                : $"{_spaces.Count} Space di model. Klik 'Klik Space di Model' untuk mulai menghitung per Space.");
         }
 
         // ---------------- helpers ----------------
@@ -208,8 +285,7 @@ namespace PublicAddress.UI
         void CeilRecalc()
         {
             if (!_ready || CeilSpeaker.SelectedItem is not SpeakerSpec spk) return;
-            double ear = Num(CeilEar.Text, 1.2), margin = Num(CeilMargin.Text, 10);
-            foreach (var r in VisibleRows) r.Calc(spk, Method, ear, margin);
+            foreach (var r in VisibleRows) r.Recalc(spk);
             var sel = VisibleRows.Where(r => r.Include).ToList();
             double w = sel.Sum(r => r.TotalW);
             int bad = sel.Count(r => r.Ok == false);
@@ -232,7 +308,42 @@ namespace PublicAddress.UI
         {
             if (!_ready) return;
             UpdateSpecText();
+            if (sender == CeilMethod) ApplyPanelToChecked();
             CeilRecalc();
+        }
+
+        /// <summary>Input panel Desain/Target (kecuali plafon &amp; noise) diterapkan ke baris yang dicentang.</summary>
+        void ApplyPanelToChecked()
+        {
+            var s = ReadCeilSettings();
+            foreach (var r in VisibleRows.Where(r => r.Include)) r.Opt = s;
+        }
+
+        void RefreshLevels()
+        {
+            var cur = CeilLevel.SelectedItem as string;
+            var levels = new List<string> { "(Semua level)" };
+            levels.AddRange(_allRows.Select(r => r.Level).Distinct());
+            CeilLevel.ItemsSource = levels;
+            CeilLevel.SelectedItem = levels.Contains(cur) ? cur : levels[0];
+        }
+
+        CeilSettings ReadCeilSettings() => new CeilSettings
+        {
+            CeilingH = Num(CeilBulkH.Text, 3), Ear = Num(CeilEar.Text, 1.2), Noise = Num(CeilNoise.Text, 50),
+            Margin = Num(CeilMargin.Text, 10), Method = Method,
+            AngleFactor = Num(CeilFactor.Text, 1.5), MaxAngleDeg = Num(CeilMaxAngle.Text, 140),
+        };
+
+        /// <summary>Input terakhir dari dialog per-Space dipakai lagi untuk Space berikutnya & tabel.</summary>
+        void WriteCeilSettings(CeilSettings s)
+        {
+            bool ready = _ready;
+            _ready = false;
+            CeilBulkH.Text = F(s.CeilingH); CeilEar.Text = F(s.Ear); CeilNoise.Text = F(s.Noise); CeilMargin.Text = F(s.Margin);
+            CeilFactor.Text = F(s.AngleFactor); CeilMaxAngle.Text = F(s.MaxAngleDeg);
+            CeilMethod.SelectedItem = CeilMethod.Items.Cast<ComboBoxItem>().First(i => (string)i.Tag == s.Method.ToString());
+            _ready = ready;
         }
 
         void CeilLevelChanged(object sender, SelectionChangedEventArgs e)
@@ -249,9 +360,10 @@ namespace PublicAddress.UI
 
         void CeilCalc_Click(object sender, RoutedEventArgs e)
         {
-            double noise = Num(CeilNoise.Text, 50);
+            ApplyPanelToChecked();
             CeilRecalc();
-            Status($"Dihitung. Noise default {F(noise)} dBA bisa diubah per baris di kolom Noise.");
+            CeilGrid.Items.Refresh();
+            Status("Dihitung ulang. Metode, telinga, margin & sudut dari panel diterapkan ke baris yang dicentang.");
         }
 
         void CeilSelectAll_Click(object sender, RoutedEventArgs e)
@@ -317,36 +429,44 @@ namespace PublicAddress.UI
                 return;
             }
             var spk = (SpeakerSpec)CeilSpeaker.SelectedItem;
-            if (CeilLevel.SelectedIndex != 0) CeilLevel.SelectedIndex = 0;
+            var settings = ReadCeilSettings();
             int placed = 0;
 
             while (true)
             {
                 Hide();
                 Autodesk.Revit.DB.ElementId id;
-                try { id = Placement.PickSpace(_uiapp.ActiveUIDocument); }
+                try { id = Placement.PickSpace(_uiapp.ActiveUIDocument, "Klik Space untuk ceiling speaker. ESC untuk selesai."); }
                 finally { Show(); Activate(); }
                 if (id == null) break;
 
-                var row = _allRows.FirstOrDefault(r => r.Space.Id.Equals(id));
-                if (row == null) { Status("Space ini tidak punya boundary yang valid."); continue; }
+                var sp = _spaces.FirstOrDefault(x => x.Id.Equals(id));
+                if (sp == null || sp.Boundary.Count < 3) { Status("Space ini tidak punya boundary yang valid."); continue; }
 
-                foreach (var r in _allRows) r.Include = false;
+                var old = _allRows.FirstOrDefault(r => r.Space.Id.Equals(id));
+                var row = new CeilingRow { Space = sp, ManualQty = old?.ManualQty ?? 0 };
+                if (old != null) settings = new CeilSettings
+                {
+                    CeilingH = old.CeilingH, Noise = old.Noise, Ear = old.Opt.Ear, Margin = old.Opt.Margin,
+                    Method = old.Opt.Method, AngleFactor = old.Opt.AngleFactor, MaxAngleDeg = old.Opt.MaxAngleDeg,
+                };
+                var dlg = new CeilingSpaceWindow(row, spk, settings) { Owner = this };
+                dlg.ShowDialog();
+                if (dlg.Action == CeilingSpaceWindow.UserAction.Close) break;
+                settings = dlg.Settings;
+
+                // simpan ke tabel (ganti baris lama bila Space yang sama diklik lagi)
+                int idx = old != null ? _allRows.IndexOf(old) : -1;
+                if (idx >= 0) _allRows[idx] = row; else _allRows.Add(row);
                 row.Include = true;
-                CeilRecalc();
-                CeilGrid.SelectedItem = row;
-                CeilGrid.ScrollIntoView(row);
-                DrawPreview(row);
 
-                var ans = MessageBox.Show(this,
-                    $"Space {row.Number} {row.Name}  ({row.Area:0.0} m²)\n\n" +
-                    $"Grid {row.GridSize} = {row.Count} × {spk.Model} @ {F(row.Tap)} W\nJarak {row.DxM:0.00} × {row.DyM:0.00} m  ·  SPL {row.Spl:0.0} dB  ({row.Status})\n(metode luas: {row.AreaCount} unit)\n\n" +
-                    "Ya = tempatkan lalu klik Space berikutnya\nTidak = lewati Space ini\nCancel = selesai",
-                    "Preview Space", MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
-                if (ans == MessageBoxResult.Cancel) break;
-                if (ans == MessageBoxResult.Yes && row.Count > 0 && PlaceRows(fam, spk, new List<CeilingRow> { row }))
+                if (dlg.Action == CeilingSpaceWindow.UserAction.Place && PlaceRows(fam, spk, new List<CeilingRow> { row }))
                     placed += row.Count;
             }
+
+            WriteCeilSettings(settings);
+            RefreshLevels();
+            CeilLevelChanged(null, null);
             Status($"Selesai. {placed} speaker ditempatkan pada sesi klik ini.");
         }
 
@@ -355,49 +475,7 @@ namespace PublicAddress.UI
             if (CeilGrid.SelectedItem is CeilingRow r) DrawPreview(r);
         }
 
-        void DrawPreview(CeilingRow row)
-        {
-            var c = CeilPreview;
-            c.Children.Clear();
-            var poly = row.Space.Boundary;
-            if (poly.Count < 3) return;
-            double minX = poly.Min(p => p.X), maxX = poly.Max(p => p.X), minY = poly.Min(p => p.Y), maxY = poly.Max(p => p.Y);
-            double cw = Math.Max(c.ActualWidth, 300), ch = Math.Max(c.ActualHeight, 260), pad = 10;
-            double k = Math.Min((cw - 2 * pad) / Math.Max(maxX - minX, 0.1), (ch - 2 * pad) / Math.Max(maxY - minY, 0.1));
-            System.Windows.Point P(double x, double y) => new(pad + (x - minX) * k, ch - pad - (y - minY) * k);
-
-            var room = new System.Windows.Shapes.Polygon
-            {
-                Stroke = System.Windows.Media.Brushes.SteelBlue, StrokeThickness = 2,
-                Fill = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0xE3, 0xF2, 0xFD)),
-            };
-            foreach (var p in poly) room.Points.Add(P(p.X, p.Y));
-            c.Children.Add(room);
-
-            foreach (var p in row.Points)
-            {
-                var q = P(p.X, p.Y);
-                double rr = row.R * k;
-                var circle = new System.Windows.Shapes.Ellipse
-                {
-                    Width = 2 * rr, Height = 2 * rr,
-                    Stroke = System.Windows.Media.Brushes.Gray, StrokeDashArray = new System.Windows.Media.DoubleCollection { 3, 3 },
-                    Fill = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(0x40, 0xFF, 0xEB, 0x3B)),
-                };
-                Canvas.SetLeft(circle, q.X - rr); Canvas.SetTop(circle, q.Y - rr);
-                c.Children.Add(circle);
-                var dot = new System.Windows.Shapes.Ellipse { Width = 7, Height = 7, Fill = System.Windows.Media.Brushes.Black };
-                Canvas.SetLeft(dot, q.X - 3.5); Canvas.SetTop(dot, q.Y - 3.5);
-                c.Children.Add(dot);
-            }
-            CeilPreviewInfo.Text =
-                $"{row.Number} {row.Name} · {maxX - minX:0.00} × {maxY - minY:0.00} m = {row.Area:0.0} m²\n" +
-                $"h-l = {row.H:0.00} m" + (row.TableHFt > 0 ? $" ≈ {row.TableHFt:0} ft (tabel)" : "") + $" · coverage {row.CoverageM2:0.0} m²\n" +
-                $"Grid {row.GridSize} = {row.Count} speaker · spacing tabel {row.S:0.00} m\n" +
-                $"Jarak aktual {row.DxM:0.00} × {row.DyM:0.00} m · ke dinding {row.DxM / 2:0.00} / {row.DyM / 2:0.00} m\n" +
-                $"Pembanding metode luas: {row.Area:0.0} ÷ {row.CoverageM2:0.0} = {row.AreaCount} unit\n" +
-                $"Tap {F(row.Tap)} W · SPL {row.Spl:0.0} dB";
-        }
+        void DrawPreview(CeilingRow row) => CeilPreviewInfo.Text = CeilingPreview.Draw(CeilPreview, row);
 
         void CeilExport_Click(object sender, RoutedEventArgs e)
         {
