@@ -51,12 +51,11 @@ namespace PublicAddress.Revit
     public static class Placement
     {
         /// <summary>User mengklik satu Space di view. Null bila batal.</summary>
-        public static ElementId PickSpace(UIDocument uidoc)
+        public static ElementId PickSpace(UIDocument uidoc, string prompt = "Klik Space yang akan diberi horn speaker")
         {
             try
             {
-                return uidoc.Selection.PickObject(ObjectType.Element, new SpaceFilter(),
-                    "Klik Space yang akan diberi horn speaker").ElementId;
+                return uidoc.Selection.PickObject(ObjectType.Element, new SpaceFilter(), prompt).ElementId;
             }
             catch (Autodesk.Revit.Exceptions.OperationCanceledException) { return null; }
         }

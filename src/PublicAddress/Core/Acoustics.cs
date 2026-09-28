@@ -11,6 +11,7 @@ namespace PublicAddress.Core
         MinOverlapSquare, // s = r * sqrt2 (grid kotak)
         MinOverlapHex,    // s = r * sqrt3 (grid hex)
         NoOverlap,        // s = 2r       (grid kotak)
+        SplLimited,       // r = jangkauan SPL, dibatasi sudut cone x faktor; s = 2r
     }
 
     /// <summary>Rumus akustik. Semua jarak dalam meter.</summary>
@@ -29,6 +30,29 @@ namespace PublicAddress.Core
             SpacingMethod.NoOverlap => 2 * r,
             _ => r,
         };
+
+        /// <summary>
+        /// Metode SPL dibatasi: r_maks = h * tan(min(sudut * faktor, sudutMaks) / 2).
+        /// Tap terkecil yang SPL-nya masih >= target sampai tepi r_maks dipakai; bila tap terbesar
+        /// pun tidak cukup, r = jangkauan SPL tap terbesar (bisa 0 bila SPL di bawah speaker pun kurang).
+        /// </summary>
+        public static double SplLimitedRadius(SpeakerSpec spk, double h, double targetDb, double angleFactor,
+            double maxAngleDeg, out double tap, out bool ok)
+        {
+            double angle = Math.Min(spk.SpacingAngleDeg * angleFactor, Math.Min(maxAngleDeg, 170));
+            double rMax = CoverageRadius(h, angle);
+            foreach (var t in spk.TapsW)
+            {
+                if (HorizontalReach(DistanceForSpl(spk.SensitivityDb, t, targetDb), h) >= rMax)
+                {
+                    tap = t; ok = true;
+                    return rMax;
+                }
+            }
+            tap = spk.TapsW.Count > 0 ? spk.TapsW.Last() : 1;
+            ok = false;
+            return HorizontalReach(DistanceForSpl(spk.SensitivityDb, tap, targetDb), h);
+        }
 
         /// <summary>SPL = Sens + 10log(P) - 20log(d).</summary>
         public static double Spl(double sensitivityDb, double powerW, double distanceM) =>

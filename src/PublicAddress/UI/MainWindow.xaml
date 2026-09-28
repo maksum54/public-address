@@ -118,20 +118,29 @@
                         <GroupBox Header="Desain">
                             <Grid>
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition/></Grid.ColumnDefinitions>
-                                <Grid.RowDefinitions><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
+                                <Grid.RowDefinitions><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
                                 <TextBlock Style="{StaticResource Lbl}" Text="Metode spacing"/>
                                 <ComboBox x:Name="CeilMethod" Grid.Column="1" SelectionChanged="CeilInputChanged">
                                     <ComboBoxItem Content="No Overlap (grid)" Tag="NoOverlap"/>
                                     <ComboBoxItem Content="Min. Overlap square (grid)" Tag="MinOverlapSquare"/>
+                                    <ComboBoxItem Content="SPL dibatasi (grid, s = 2r)" Tag="SplLimited"/>
                                 </ComboBox>
                                 <TextBlock Style="{StaticResource Lbl}" Grid.Row="1" Text="Tinggi telinga (m)"/>
                                 <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal">
                                     <TextBox x:Name="CeilEar" Text="1.2"/>
                                     <TextBlock Style="{StaticResource Lbl}" Margin="8,0" Text="duduk 1.2 / berdiri 1.5" Foreground="#90A4AE"/>
                                 </StackPanel>
-                                <TextBlock Style="{StaticResource Lbl}" Grid.Row="2" Text="Level"/>
-                                <ComboBox x:Name="CeilLevel" Grid.Row="2" Grid.Column="1" SelectionChanged="CeilLevelChanged"/>
-                                <TextBlock Grid.Row="3" Grid.ColumnSpan="2" Foreground="#90A4AE" Margin="0,4,0,0" Text="Spacing dari tabel datasheet · jumlah = ceil(lebar/s) × ceil(panjang/s)"/>
+                                <TextBlock Style="{StaticResource Lbl}" Grid.Row="2" Text="SPL dibatasi: faktor × / maks °"
+                                           ToolTip="Hanya untuk metode SPL dibatasi: sudut coverage × faktor, tidak lebih dari sudut maks"/>
+                                <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal">
+                                    <TextBox x:Name="CeilFactor" Text="1.5" Width="45"/>
+                                    <TextBlock Style="{StaticResource Lbl}" Margin="6,0" Text="×"/>
+                                    <TextBox x:Name="CeilMaxAngle" Text="140" Width="45"/>
+                                    <TextBlock Style="{StaticResource Lbl}" Margin="6,0" Text="°"/>
+                                </StackPanel>
+                                <TextBlock Style="{StaticResource Lbl}" Grid.Row="3" Text="Level"/>
+                                <ComboBox x:Name="CeilLevel" Grid.Row="3" Grid.Column="1" SelectionChanged="CeilLevelChanged"/>
+                                <TextBlock Grid.Row="4" Grid.ColumnSpan="2" Foreground="#90A4AE" Margin="0,4,0,0" Text="Spacing dari tabel datasheet · jumlah = ceil(lebar/s) × ceil(panjang/s)"/>
                             </Grid>
                         </GroupBox>
                         <GroupBox Header="Target SPL">
@@ -158,7 +167,7 @@
                             <Button Style="{StaticResource Secondary}" Content="Hitung" Click="CeilCalc_Click"/>
                             <Button Style="{StaticResource Secondary}" Content="Tempatkan yang dicentang" Click="CeilPlace_Click"/>
                             <Button Style="{StaticResource Primary}" Content="Klik Space di Model (satu-satu)" Click="CeilPick_Click"
-                                    ToolTip="Klik satu Space → preview → Ya = tempatkan &amp; lanjut Space berikutnya, Tidak = lewati, Cancel = selesai"/>
+                                    ToolTip="Klik satu Space → isi input per Space → Tempatkan / Simpan &amp; pilih Space lain / Selesai"/>
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                             <CheckBox Content="Pilih semua" VerticalAlignment="Center" Click="CeilSelectAll_Click" x:Name="CeilAll" IsChecked="False"/>
@@ -169,7 +178,7 @@
                     <Border DockPanel.Dock="Bottom" Style="{StaticResource Formula}">
                         <TextBlock TextWrapping="Wrap" Foreground="#5D4037">
                             <Run FontWeight="SemiBold" Text="Rumus: "/>
-                            <Run Text="h−l = plafon − telinga → baris tabel datasheet terdekat (ft)  ·  spacing = kolom No Overlap / Min. Overlap (square)  ·  jumlah = ceil(lebar ÷ spacing) × ceil(panjang ÷ spacing)  ·  pembanding: luas ÷ coverage area  ·  SPL = Sens + 10·log(Tap) − 20·log(h)"/>
+                            <Run Text="h−l = plafon − telinga → baris tabel datasheet terdekat (ft)  ·  spacing = kolom No Overlap / Min. Overlap (square)  ·  jumlah = ceil(lebar ÷ spacing) × ceil(panjang ÷ spacing)  ·  pembanding: luas ÷ coverage area  ·  SPL = Sens + 10·log(Tap) − 20·log(h)  ·  SPL dibatasi: r = min(jangkauan SPL, h·tan(sudut×faktor/2)), spacing = 2r"/>
                         </TextBlock>
                     </Border>
 
@@ -182,6 +191,7 @@
                             <DataGridTextColumn Header="No." Binding="{Binding Number}" IsReadOnly="True" Width="60"/>
                             <DataGridTextColumn Header="Nama Space" Binding="{Binding Name}" IsReadOnly="True" Width="*"/>
                             <DataGridTextColumn Header="Luas (m²)" Binding="{Binding Area, StringFormat=0.0}" IsReadOnly="True" Width="70"/>
+                            <DataGridTextColumn Header="Metode" Binding="{Binding MethodName}" IsReadOnly="True" Width="90"/>
                             <DataGridTextColumn Header="Plafon (m) ✎" Binding="{Binding CeilingH, StringFormat=0.00}" Width="80"/>
                             <DataGridTextColumn Header="Noise (dBA) ✎" Binding="{Binding Noise, StringFormat=0}" Width="85"/>
                             <DataGridTextColumn Header="h (m)" Binding="{Binding H, StringFormat=0.00}" IsReadOnly="True" Width="55"/>
@@ -217,7 +227,7 @@
                             <DockPanel>
                                 <TextBlock DockPanel.Dock="Top" Text="Preview" FontWeight="SemiBold" Foreground="#1565C0"/>
                                 <TextBlock DockPanel.Dock="Bottom" x:Name="CeilPreviewInfo" TextWrapping="Wrap" Foreground="#37474F" Margin="0,6,0,0"
-                                           Text="Klik 'Klik Space di Model' atau pilih baris di tabel."/>
+                                           Text="Tabel masih kosong. Klik 'Klik Space di Model (satu-satu)' untuk mulai."/>
                                 <Canvas x:Name="CeilPreview" ClipToBounds="True" Margin="0,6,0,0" SizeChanged="CeilPreview_SizeChanged"/>
                             </DockPanel>
                         </Border>

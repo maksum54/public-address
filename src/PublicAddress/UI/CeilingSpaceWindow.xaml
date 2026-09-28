@@ -1,0 +1,130 @@
+<Window x:Class="PublicAddress.UI.CeilingSpaceWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Ceiling Speaker - per Space" Width="900" Height="640" MinWidth="780" MinHeight="560"
+        WindowStartupLocation="CenterOwner" ResizeMode="CanResizeWithGrip"
+        FontFamily="Segoe UI" FontSize="13" Background="#F4F6F9">
+    <Window.Resources>
+        <SolidColorBrush x:Key="Accent" Color="#1565C0"/>
+        <Style x:Key="Card" TargetType="Border">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="14"/>
+            <Setter Property="Margin" Value="0,0,0,10"/>
+            <Setter Property="BorderBrush" Value="#E0E4EA"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+        <Style x:Key="Label" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#6B7280"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Margin" Value="0,6,0,2"/>
+        </Style>
+        <Style x:Key="Value" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="15"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="#111827"/>
+        </Style>
+        <Style TargetType="TextBox">
+            <Setter Property="Padding" Value="6,4"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="BorderBrush" Value="#CBD2DB"/>
+        </Style>
+        <Style x:Key="Btn" TargetType="Button">
+            <Setter Property="Padding" Value="16,8"/>
+            <Setter Property="Margin" Value="8,0,0,0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="BorderBrush" Value="#CBD2DB"/>
+        </Style>
+        <Style x:Key="PrimaryBtn" TargetType="Button" BasedOn="{StaticResource Btn}">
+            <Setter Property="Background" Value="{StaticResource Accent}"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Accent}"/>
+        </Style>
+    </Window.Resources>
+
+    <DockPanel Margin="14">
+        <Border DockPanel.Dock="Top" Background="{StaticResource Accent}" CornerRadius="8" Padding="16,10" Margin="0,0,0,10">
+            <StackPanel>
+                <TextBlock x:Name="TxtSpaceName" Text="Space" Foreground="White" FontSize="20" FontWeight="Bold"/>
+                <TextBlock x:Name="TxtSpaceInfo" Foreground="#DCEBFB" FontSize="12"/>
+            </StackPanel>
+        </Border>
+
+        <DockPanel DockPanel.Dock="Bottom" Margin="0,10,0,0" LastChildFill="False">
+            <TextBlock DockPanel.Dock="Left" VerticalAlignment="Center" Foreground="#6B7280" FontSize="11"
+                       Text="Titik hitam = speaker · lingkaran kuning = radius coverage r."/>
+            <Button DockPanel.Dock="Right" Content="Selesai" Style="{StaticResource Btn}" Click="Close_Click" IsCancel="True"/>
+            <Button DockPanel.Dock="Right" Content="Simpan &amp; Pilih Space Lain" Style="{StaticResource Btn}" Click="Pick_Click"
+                    ToolTip="Hasil masuk ke tabel tanpa ditempatkan, lalu klik Space berikutnya"/>
+            <Button x:Name="BtnPlace" DockPanel.Dock="Right" Content="Tempatkan ke Model" MinWidth="170" Style="{StaticResource PrimaryBtn}"
+                    Click="Place_Click" IsDefault="True"/>
+        </DockPanel>
+
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="360"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="0,0,10,0">
+                <StackPanel>
+                    <Border Style="{StaticResource Card}">
+                        <StackPanel>
+                            <TextBlock Text="1. DIMENSI SPACE" FontWeight="Bold" Foreground="{StaticResource Accent}"/>
+                            <UniformGrid Columns="2">
+                                <StackPanel><TextBlock Text="Lebar × panjang" Style="{StaticResource Label}"/><TextBlock x:Name="TxtLW" Style="{StaticResource Value}"/></StackPanel>
+                                <StackPanel><TextBlock Text="Luas Space" Style="{StaticResource Label}"/><TextBlock x:Name="TxtArea" Style="{StaticResource Value}"/></StackPanel>
+                            </UniformGrid>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource Card}">
+                        <StackPanel>
+                            <TextBlock Text="2. INPUT" FontWeight="Bold" Foreground="{StaticResource Accent}"/>
+                            <UniformGrid Columns="2">
+                                <StackPanel Margin="0,0,6,0"><TextBlock Text="Tinggi plafon (m)" Style="{StaticResource Label}"/><TextBox x:Name="TbCeiling" TextChanged="Input_Changed"/></StackPanel>
+                                <StackPanel><TextBlock Text="Tinggi telinga (m)" Style="{StaticResource Label}"/><TextBox x:Name="TbEar" TextChanged="Input_Changed"/></StackPanel>
+                                <StackPanel Margin="0,0,6,0"><TextBlock Text="Noise (dBA)" Style="{StaticResource Label}"/><TextBox x:Name="TbNoise" TextChanged="Input_Changed"/></StackPanel>
+                                <StackPanel><TextBlock Text="Margin (dB)" Style="{StaticResource Label}"/><TextBox x:Name="TbMargin" TextChanged="Input_Changed"/></StackPanel>
+                            </UniformGrid>
+                            <TextBlock Text="Metode spacing" Style="{StaticResource Label}"/>
+                            <ComboBox x:Name="CbMethod" SelectionChanged="Input_Changed" Padding="6,4">
+                                <ComboBoxItem Content="No Overlap (grid)" Tag="NoOverlap"/>
+                                <ComboBoxItem Content="Min. Overlap square (grid)" Tag="MinOverlapSquare"/>
+                                <ComboBoxItem Content="SPL dibatasi (grid, s = 2r)" Tag="SplLimited"/>
+                            </ComboBox>
+                            <UniformGrid x:Name="SplOptions" Columns="2">
+                                <StackPanel Margin="0,0,6,0"><TextBlock Text="Faktor sudut (×)" Style="{StaticResource Label}"/><TextBox x:Name="TbFactor" TextChanged="Input_Changed"
+                                    ToolTip="Sudut coverage speaker dikali faktor ini (1.5 ≈ batas −10 dB)"/></StackPanel>
+                                <StackPanel><TextBlock Text="Sudut maks (°)" Style="{StaticResource Label}"/><TextBox x:Name="TbMaxAngle" TextChanged="Input_Changed"/></StackPanel>
+                            </UniformGrid>
+                            <TextBlock Text="Qty manual (0 = otomatis)" Style="{StaticResource Label}"/>
+                            <TextBox x:Name="TbManual" TextChanged="Input_Changed"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource Card}" Background="#F3F8FE" BorderBrush="#C5DAF3">
+                        <StackPanel>
+                            <TextBlock Text="3. HASIL" FontWeight="Bold" Foreground="{StaticResource Accent}"/>
+                            <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                <TextBlock x:Name="TxtQty" Text="0" FontSize="40" FontWeight="Bold" Foreground="{StaticResource Accent}"/>
+                                <TextBlock x:Name="TxtQtyUnit" Text=" speaker" FontSize="16" VerticalAlignment="Bottom" Margin="4,0,0,10"/>
+                            </StackPanel>
+                            <TextBlock x:Name="TxtDetail" TextWrapping="Wrap" Foreground="#374151" FontSize="12" LineHeight="18"/>
+                            <TextBlock x:Name="TxtWarning" TextWrapping="Wrap" Foreground="#B45309" FontSize="12" Margin="0,6,0,0"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+
+            <Border Grid.Column="1" Style="{StaticResource Card}" Margin="0">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top" Text="PREVIEW LAYOUT" FontWeight="Bold" Foreground="{StaticResource Accent}" Margin="0,0,0,8"/>
+                    <Canvas x:Name="Preview" ClipToBounds="True" SizeChanged="Preview_SizeChanged" Background="#FAFBFC"/>
+                </DockPanel>
+            </Border>
+        </Grid>
+    </DockPanel>
+</Window>
